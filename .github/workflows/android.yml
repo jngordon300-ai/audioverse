@@ -121,3 +121,29 @@ jobs:
             audioverse/app/build/reports/androidTests/
             audioverse/gate_report.txt
           retention-days: 7
+
+  # Publishes the tested APK as a direct download (phone-friendly, no zip, no login):
+  # https://github.com/<owner>/<repo>/releases/download/gate-latest/AudioVerse-gate.apk
+  publish-apk:
+    needs: [build, emulator-gate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write   # only this job may create the release
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: audioverse-debug-apk
+          path: apk
+
+      - name: Replace the gate-latest pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv apk/*.apk apk/AudioVerse-gate.apk
+          gh release delete gate-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create gate-latest apk/AudioVerse-gate.apk \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title "AudioVerse gate build (latest)" \
+            --notes "Debug build of commit $GITHUB_SHA. Passed unit tests and the emulator engine gate. Personal sideload only."
