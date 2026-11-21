@@ -24,7 +24,9 @@ class ProbeAudioProcessor : BaseAudioProcessor() {
         val sampleRate: Int,
         val channels: Int,
         val framesSeen: Long,
-        val longestSilenceMs: Double
+        val longestSilenceMs: Double,
+        /** Highest absolute sample level seen since the last resetPeak(), 0..1+. */
+        val peak: Float
     )
 
     @Volatile private var configured = false
@@ -35,6 +37,7 @@ class ProbeAudioProcessor : BaseAudioProcessor() {
     @Volatile private var armed = false
     @Volatile private var longestRun = 0L
     private var currentRun = 0L
+    @Volatile private var peak = 0f
 
     override fun onConfigure(inputAudioFormat: AudioFormat): AudioFormat {
         configured = true
@@ -50,8 +53,11 @@ class ProbeAudioProcessor : BaseAudioProcessor() {
 
     fun snapshot() = Snapshot(
         configured, encoding, rate, channels, framesSeen,
-        if (rate > 0) longestRun * 1000.0 / rate else 0.0
+        if (rate > 0) longestRun * 1000.0 / rate else 0.0,
+        peak
     )
+
+    fun resetPeak() { peak = 0f }
 
     fun resetCounters() { configured = false; framesSeen = 0 }
 
@@ -64,7 +70,7 @@ class ProbeAudioProcessor : BaseAudioProcessor() {
             C.ENCODING_PCM_32BIT, C.ENCODING_PCM_FLOAT -> 4
             else -> 0
         }
-        if (armed && bytesPerSample > 0 && channels > 0) scanSilence(inputBuffer.duplicate(), bytesPerSample)
+        if (bytesPerSample > 0 && channels > 0) scanSilence(inputBuffer.duplicate().order(inputBuffer.order()), bytesPerSample)
         if (bytesPerSample > 0 && channels > 0) framesSeen += remaining / (bytesPerSample * channels)
 
         val out = replaceOutputBuffer(remaining)
@@ -89,7 +95,9 @@ class ProbeAudioProcessor : BaseAudioProcessor() {
                     else -> abs(buf.float)
                 }
                 if (level > SILENCE_LEVEL) silent = false
+                if (level > peak) peak = level
             }
+            if (!armed) continue
             if (silent) {
                 currentRun++
                 if (currentRun > longestRun) longestRun = currentRun

@@ -9,6 +9,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.ForwardingAudioSink
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * AudioVerse output stage (Council U1: DSP separate from the engine).
@@ -79,7 +80,12 @@ class ProcessingAudioSink(
         if (!drainPending()) return false
         if (!buffer.hasRemaining()) return true
 
-        var out = buffer
+        // Decoder buffers can arrive flagged BIG_ENDIAN even though the PCM is
+        // little-endian (native). Media3's own stages never read typed values from
+        // them, but our processors do, so read through a native-order view; the
+        // caller's buffer is then marked fully consumed.
+        var out: ByteBuffer = buffer.duplicate().order(ByteOrder.nativeOrder())
+        buffer.position(buffer.limit())
         for (p in activeProcessors) {
             p.queueInput(out)
             out = p.output

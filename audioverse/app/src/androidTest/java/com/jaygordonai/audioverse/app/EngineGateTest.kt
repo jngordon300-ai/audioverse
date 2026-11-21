@@ -33,7 +33,7 @@ class EngineGateTest {
 
     private val files = listOf("tone_16_44k.mp3", "tone_16_44k.flac", "tone_24_96k.flac", "tone_24_48k.wav")
 
-    private class Engine(val backend: Media3Backend, val probe: ProbeAudioProcessor) {
+    private class Engine(val backend: Media3Backend, val probe: ProbeAudioProcessor, val probeOut: ProbeAudioProcessor? = null) {
         @Volatile var error: String? = null
     }
 
@@ -59,8 +59,9 @@ class EngineGateTest {
         return Uri.fromFile(out)
     }
 
-    private fun build(processingSink: Boolean, dsp: Boolean): Engine = onMain {
+    private fun build(processingSink: Boolean, dsp: Boolean, outputProbe: Boolean = false): Engine = onMain {
         val probe = ProbeAudioProcessor()
+        val probeOut = if (outputProbe) ProbeAudioProcessor() else null
         val processor = AudiophileDspProcessor().apply {
             setReplayGainMode(ReplayGainMode.OFF)
             limiterEnabled = false
@@ -68,10 +69,11 @@ class EngineGateTest {
         val backend = Media3Backend(
             context = context,
             useProcessingSink = processingSink,
-            processors = if (dsp) arrayOf(probe, processor) else arrayOf(probe),
+            processors = (listOf(probe) + (if (dsp) listOf(processor) else emptyList()) + listOfNotNull(probeOut))
+                .toTypedArray<androidx.media3.common.audio.AudioProcessor>(),
             authProvider = { null }
         )
-        Engine(backend, probe).also { e ->
+        Engine(backend, probe, probeOut).also { e ->
             backend.player.addListener(object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) {
                     e.error = error.errorCodeName + " | " +
@@ -156,6 +158,33 @@ class EngineGateTest {
         } finally {
             onMain { e.backend.release() }
         }
+    }
+
+    /**
+     * Guards against byte-order or format mistakes: with a neutral DSP the level
+     * coming out must match the level going in (tones peak at about 0.088).
+     * Garbage from misread samples would be far louder.
+     */
+    @Test
+    fun dspOutputMatchesInputLevel() {
+        val problems = mutableListOf<String>()
+        for (f in files) {
+            val e = build(processingSink = true, dsp = true, outputProbe = true)
+            try {
+                onMain { e.backend.setQueue(listOf(asset(f))); e.backend.play() }
+                val ok = waitFor(e, 15_000) { e.backend.player.currentPosition >= 1_500 }
+                val inPeak = e.probe.snapshot().peak
+                val outPeak = e.probeOut!!.snapshot().peak
+                val line = "levels file=$f plays=$ok inPeak=${"%.4f".format(inPeak)} outPeak=${"%.4f".format(outPeak)}" +
+                    (e.error?.let { " error=$it" } ?: "")
+                Log.i(TAG, line)
+                val sane = ok && inPeak in 0.05f..0.15f && kotlin.math.abs(outPeak - inPeak) < 0.01f
+                if (!sane) problems += line
+            } finally {
+                onMain { e.backend.release() }
+            }
+        }
+        if (problems.isNotEmpty()) fail("Level check failed:\n" + problems.joinToString("\n"))
     }
 
     /** Documents the stock Media3 sink for the Council; logs only, never fails. */
