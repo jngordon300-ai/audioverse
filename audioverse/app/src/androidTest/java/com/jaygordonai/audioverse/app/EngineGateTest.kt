@@ -44,7 +44,20 @@ class EngineGateTest {
         return result as T
     }
 
-    private fun asset(name: String): Uri = Uri.parse("asset:///$name")
+    /**
+     * Test tones are packaged in the TEST apk, but the player runs in the app's
+     * context, so asset:/// would look in the wrong apk. Copy each tone from the
+     * instrumentation context into the app's cache once and play it as a file.
+     */
+    private fun asset(name: String): Uri {
+        val out = java.io.File(context.cacheDir, "gate_$name")
+        if (!out.exists() || out.length() == 0L) {
+            instrumentation.context.assets.open(name).use { input ->
+                out.outputStream().use { input.copyTo(it) }
+            }
+        }
+        return Uri.fromFile(out)
+    }
 
     private fun build(processingSink: Boolean, dsp: Boolean): Engine = onMain {
         val probe = ProbeAudioProcessor()
