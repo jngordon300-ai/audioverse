@@ -12,8 +12,9 @@ android {
         applicationId = "com.jaygordonai.audioverse"
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.1.2-gate"
+        versionCode = 4
+        versionName = "0.1.3-gate"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -63,4 +64,7 @@ dependencies {
     implementation(libs.media3.extractor)
     implementation(libs.media3.session)
     implementation(libs.kotlinx.coroutines.android)
+
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
 }

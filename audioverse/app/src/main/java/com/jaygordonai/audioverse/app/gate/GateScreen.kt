@@ -75,15 +75,15 @@ fun GateScreen(vm: GateViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                    Text("Float output", style = MaterialTheme.typography.titleLarge)
+                    Text("AudioVerse sink", style = MaterialTheme.typography.titleLarge)
                     Text(
-                        "Run tests 1 and 2 with this ON and OFF to see how Media3 treats hi-res audio.",
+                        "ON (recommended): our hi-res output stage. OFF: Media3's stock output, kept for comparison.",
                         style = MaterialTheme.typography.bodySmall,
                         color = Values.InkBody
                     )
                 }
                 Switch(
-                    checked = s.floatOutput, onCheckedChange = vm::setFloatOutput, enabled = !s.busy,
+                    checked = s.processingSink, onCheckedChange = vm::setProcessingSink, enabled = !s.busy,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Values.Card,
                         checkedTrackColor = Values.GoldText,
@@ -219,7 +219,7 @@ private fun Masthead() {
     Column(Modifier.padding(top = 24.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("PHASE 1 · ENGINE GATE", style = Values.Kicker, color = Values.InkMuted)
-            Text("V0.1.2", style = Values.Kicker, color = Values.InkMuted)
+            Text("V0.1.3", style = Values.Kicker, color = Values.InkMuted)
         }
         Text(
             "AudioVerse",

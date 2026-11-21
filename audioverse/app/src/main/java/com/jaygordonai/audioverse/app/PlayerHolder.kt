@@ -21,7 +21,8 @@ object PlayerHolder {
     class Engine(val backend: Media3Backend, val probe: ProbeAudioProcessor, val dsp: AudiophileDspProcessor)
 
     private var engine: Engine? = null
-    var floatOutput: Boolean = true
+    /** true = AudioVerse ProcessingAudioSink (default); false = Media3 stock sink, for comparison. */
+    var processingSink: Boolean = true
         private set
     /** Phase 1 diagnostic: false = probe only, to isolate our DSP from Media3 itself. */
     var dspInChain: Boolean = true
@@ -36,8 +37,8 @@ object PlayerHolder {
 
     fun get(context: Context): Engine = engine ?: build(context)
 
-    fun rebuild(context: Context, floatOutput: Boolean, dspInChain: Boolean = this.dspInChain): Engine {
-        this.floatOutput = floatOutput
+    fun rebuild(context: Context, processingSink: Boolean, dspInChain: Boolean = this.dspInChain): Engine {
+        this.processingSink = processingSink
         this.dspInChain = dspInChain
         engine?.backend?.release()
         engine = null
@@ -65,7 +66,7 @@ object PlayerHolder {
         }
         val backend = Media3Backend(
             context = context,
-            floatOutput = floatOutput,
+            useProcessingSink = processingSink,
             processors = if (dspInChain) arrayOf(probe, dsp) else arrayOf(probe),
             authProvider = { auth }
         )

@@ -42,7 +42,7 @@ enum class Status { NOT_RUN, RUNNING, PASS, FAIL, INFO }
 data class TestResult(val status: Status = Status.NOT_RUN, val detail: String = "")
 
 data class GateUiState(
-    val floatOutput: Boolean = true,
+    val processingSink: Boolean = true,
     val dspInChain: Boolean = true,
     val busy: Boolean = false,
     val hasSavedServer: Boolean = false,
@@ -95,7 +95,7 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         PlayerHolder.loadAuth(ctx)
-        _ui.update { it.copy(floatOutput = PlayerHolder.floatOutput, dspInChain = PlayerHolder.dspInChain, hasSavedServer = PlayerHolder.auth?.hasJellyfin == true) }
+        _ui.update { it.copy(processingSink = PlayerHolder.processingSink, dspInChain = PlayerHolder.dspInChain, hasSavedServer = PlayerHolder.auth?.hasJellyfin == true) }
         attach()
     }
 
@@ -107,16 +107,16 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
         p.removeAnalyticsListener(analytics); p.addAnalyticsListener(analytics)
     }
 
-    fun setFloatOutput(enabled: Boolean) {
+    fun setProcessingSink(enabled: Boolean) {
         job?.cancel()
         PlayerHolder.rebuild(ctx, enabled, PlayerHolder.dspInChain)
         attach()
-        _ui.update { it.copy(floatOutput = enabled, busy = false) }
+        _ui.update { it.copy(processingSink = enabled, busy = false) }
     }
 
     fun setDspInChain(enabled: Boolean) {
         job?.cancel()
-        PlayerHolder.rebuild(ctx, PlayerHolder.floatOutput, enabled)
+        PlayerHolder.rebuild(ctx, PlayerHolder.processingSink, enabled)
         attach()
         _ui.update { it.copy(dspInChain = enabled, busy = false) }
     }
@@ -133,6 +133,8 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
         val masked = causes.replace(Regex("(content|file|https?)://\\S+"), "[uri]")
         return error.errorCodeName + if (masked.isNotBlank()) " | $masked" else ""
     }
+
+    private fun sinkLabel() = if (_ui.value.processingSink) "AudioVerse sink" else "Stock Media3 sink"
 
     fun stop() {
         job?.cancel()
@@ -161,8 +163,8 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
             !crossed -> TestResult(Status.FAIL, "Did not reach track 2 in time.")
             snap.framesSeen == framesBefore -> TestResult(
                 Status.INFO,
-                "Audio processors did not run in float-output mode, so silence could not be measured. " +
-                    "Turn Float output OFF and run again, and listen at the track change."
+                "Our processors did not run (stock sink with hi-res input), so silence could not be measured. " +
+                    "Switch to the AudioVerse sink and run again."
             )
             else -> {
                 val ms = snap.longestSilenceMs
@@ -188,23 +190,25 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
         p.play(); delay(4_000); p.pause()
         val snap = e.probe.snapshot()
         val ran = snap.framesSeen > framesBefore
-        val base = "Float output ${if (_ui.value.floatOutput) "ON" else "OFF"}, DSP ${if (_ui.value.dspInChain) "IN" else "OUT"}. " +
+        val base = "${sinkLabel()}, DSP ${if (_ui.value.dspInChain) "IN" else "OUT"}. " +
             "File: $inputFormat. Decoder: $decoderName. " +
+            "DSP input: ${if (ran) "${enc(snap.encoding)} at ${snap.sampleRate / 1000.0} kHz" else "none"}. " +
             "Output to Android: ${enc(sinkEncoding)} at ${sinkRate / 1000.0} kHz. "
         when {
             lastError != null -> TestResult(Status.FAIL, base + "Playback error: $lastError")
             !ran -> TestResult(
-                if (sinkEncoding == C.ENCODING_PCM_FLOAT) Status.INFO else Status.FAIL,
-                base + "Custom processors did NOT run, so the EQ/limiter chain would be bypassed for this file. " +
-                    "Hi-res reaches Android, but DSP needs another route (custom sink). Run again with Float output OFF to compare."
+                Status.FAIL,
+                base + "Our processors did not run on this file, so EQ and limiter would be bypassed. " +
+                    "Expected with the stock sink; with the AudioVerse sink this is a bug."
             )
-            snap.encoding == C.ENCODING_PCM_FLOAT -> TestResult(
-                Status.PASS, base + "DSP receives 32-bit float at ${snap.sampleRate / 1000.0} kHz: no truncation before EQ."
+            snap.encoding == C.ENCODING_PCM_16BIT -> TestResult(
+                Status.FAIL,
+                base + "The decoder delivered 16-bit, so a 24-bit file lost detail before the DSP. " +
+                    "(Pass is expected only for a real 24-bit file.)"
             )
             else -> TestResult(
-                Status.FAIL,
-                base + "DSP receives ${enc(snap.encoding)} at ${snap.sampleRate / 1000.0} kHz. " +
-                    "A 24-bit file is being cut to 16-bit before the EQ."
+                Status.PASS,
+                base + "Hi-res reaches the DSP (${enc(snap.encoding)}) and leaves as float: no truncation."
             )
         }
     }
@@ -311,7 +315,7 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
         appendLine("AudioVerse Phase 1 gate results")
         appendLine(SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date()))
         appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
-        appendLine("Engine: Media3 1.5.1, float output ${if (_ui.value.floatOutput) "ON" else "OFF"}, DSP ${if (_ui.value.dspInChain) "in chain" else "out of chain"}")
+        appendLine("Engine: Media3 1.5.1, ${sinkLabel()}, DSP ${if (_ui.value.dspInChain) "in chain" else "out of chain"}")
         appendLine()
         _ui.value.results.forEach { (t, r) -> appendLine("${t.title}: ${r.status}\n  ${r.detail}") }
     }

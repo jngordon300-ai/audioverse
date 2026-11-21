@@ -13,6 +13,7 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.RenderersFactory
+import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.MediaCodecAudioRenderer
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
@@ -28,8 +29,10 @@ import java.util.concurrent.TimeUnit
  * Primary playback backend built on AndroidX Media3.
  *
  * - Audio-only renderers we control explicitly (MediaCodec audio + metadata for ICY).
- * - DefaultAudioSink with our processor chain; floatOutput is a switch because the
- *   Phase 1 gate must find out whether Media3 runs custom processors on float PCM.
+ * - Default: ProcessingAudioSink runs our processors on the decoder's PCM, then a
+ *   float-mode DefaultAudioSink plays it (hi-res safe, no 16-bit truncation).
+ * - useProcessingSink = false keeps Media3's stock sink (processors inside
+ *   DefaultAudioSink) for comparison in the gate.
  * - All HTTP goes through OkHttp with SecureHeaderInterceptor + HttpEventRecorder
  *   as NETWORK interceptors (per-hop host checks, no tokens in URLs).
  * - content:// and file:// URIs go through DefaultDataSource.
@@ -37,7 +40,7 @@ import java.util.concurrent.TimeUnit
 @OptIn(UnstableApi::class)
 class Media3Backend(
     context: Context,
-    floatOutput: Boolean,
+    useProcessingSink: Boolean,
     processors: Array<AudioProcessor>,
     authProvider: () -> AuthConfig?,
     val httpRecorder: HttpEventRecorder = HttpEventRecorder(authProvider)
@@ -53,10 +56,18 @@ class Media3Backend(
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private val audioSink = DefaultAudioSink.Builder(appContext)
-        .setEnableFloatOutput(floatOutput)
-        .setAudioProcessors(processors)
-        .build()
+    private val audioSink: AudioSink =
+        if (useProcessingSink) {
+            ProcessingAudioSink(
+                DefaultAudioSink.Builder(appContext).setEnableFloatOutput(true).build(),
+                processors.toList()
+            )
+        } else {
+            DefaultAudioSink.Builder(appContext)
+                .setEnableFloatOutput(true)
+                .setAudioProcessors(processors)
+                .build()
+        }
 
     private val renderersFactory = RenderersFactory { handler, _, audioListener, _, metadataOutput ->
         arrayOf<Renderer>(
