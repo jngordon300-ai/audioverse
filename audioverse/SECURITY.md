@@ -9,7 +9,7 @@
 | Backup | `allowBackup=false` plus data-extraction rules exclude all app data from cloud backup and device transfer. |
 | Logging | No HTTP logging interceptor. `AuthConfig.toString()` hides secrets. Test results contain no URLs, hosts or tokens. |
 | UI secrets | Token fields are masked, held in memory only (not saved instance state) and cleared after use. "Forget saved login" wipes them. |
-| Permissions | Internet, wake lock, foreground media service, notifications. No storage, location, contacts or microphone. |
+| Permissions | Internet, wake lock, foreground media service, notifications, and music/audio files only (READ_MEDIA_AUDIO) for the local library. No photos, video, documents, location, contacts or microphone. |
 | Media session | Only this app and trusted system controllers (lock screen, Bluetooth, Android Auto) can connect. |
 | Bit-perfect | Query only. Never switched on in this build (full-scale output risk, Council U23). |
 | CI | Workflow permission `contents: read`. Optional debug keystore comes from a repository secret and is deleted after the build. The wrapper jar is validated by setup-gradle. |

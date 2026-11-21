@@ -2,9 +2,12 @@ package com.jaygordonai.audioverse.app
 
 import android.content.Context
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import com.jaygordonai.audioverse.app.gate.ProbeAudioProcessor
+import com.jaygordonai.audioverse.app.player.SoundSettings
 import com.jaygordonai.audioverse.dsp.AudiophileDspProcessor
 import com.jaygordonai.audioverse.dsp.ReplayGainMode
 import com.jaygordonai.audioverse.network.AuthConfig
@@ -57,19 +60,25 @@ object PlayerHolder {
     private fun build(context: Context): Engine {
         if (auth == null) loadAuth(context)
         val probe = ProbeAudioProcessor()
-        // Neutral DSP: present in the chain so the gate tests what it actually receives,
-        // but with no gain, flat EQ, no vocal stage and no limiter, so audio is unchanged.
-        val dsp = AudiophileDspProcessor().apply {
-            setReplayGainMode(ReplayGainMode.OFF)
-            preampDb = 0f
-            limiterEnabled = false
-        }
+        // The listener's saved sound settings (ReplayGain, EQ, limiter, vocal, mixer).
+        val dsp = AudiophileDspProcessor().also { SoundSettings.load(context).applyTo(it) }
         val backend = Media3Backend(
             context = context,
             useProcessingSink = processingSink,
             processors = if (dspInChain) arrayOf(probe, dsp) else arrayOf(probe),
             authProvider = { auth }
         )
+        // Feed each new track's tags to the DSP so ReplayGain follows the track.
+        backend.player.addListener(object : Player.Listener {
+            override fun onTracksChanged(tracks: Tracks) {
+                for (group in tracks.groups) {
+                    if (group.type != C.TRACK_TYPE_AUDIO || !group.isSelected) continue
+                    for (i in 0 until group.length) {
+                        if (group.isTrackSelected(i)) { dsp.updateFromFormat(group.getTrackFormat(i)); return }
+                    }
+                }
+            }
+        })
         return Engine(backend, probe, dsp).also { engine = it }
     }
 }

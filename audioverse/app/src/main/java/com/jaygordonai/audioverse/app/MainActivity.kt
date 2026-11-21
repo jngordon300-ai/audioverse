@@ -15,13 +15,15 @@ import androidx.core.content.ContextCompat
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
-import com.jaygordonai.audioverse.app.gate.GateScreen
+import com.jaygordonai.audioverse.app.player.PlayerViewModel
+import com.jaygordonai.audioverse.app.theme.AudioVerseTheme
+import com.jaygordonai.audioverse.app.ui.AudioVerseApp
 import com.jaygordonai.audioverse.app.gate.GateViewModel
-import com.jaygordonai.audioverse.app.theme.ValuesTheme
 
 class MainActivity : ComponentActivity() {
 
-    private val vm: GateViewModel by viewModels()
+    private val playerVm: PlayerViewModel by viewModels()
+    private val gateVm: GateViewModel by viewModels()
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -34,8 +36,8 @@ class MainActivity : ComponentActivity() {
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         setContent {
-            ValuesTheme {
-                Surface(color = MaterialTheme.colorScheme.background) { GateScreen(vm) }
+            AudioVerseTheme {
+                AudioVerseApp(playerVm, gateVm = { gateVm })
             }
         }
     }
