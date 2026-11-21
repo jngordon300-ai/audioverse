@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext is permitted because many internet radio stations only stream over
+  plain HTTP. Credentials are protected in code instead: SecureHeaderInterceptor
+  only attaches tokens to HTTPS requests, and the Jellyfin test rejects http URLs.
+  Only system certificate authorities are trusted (user-installed CAs are not),
+  which blocks most interception proxies.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

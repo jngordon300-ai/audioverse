@@ -1,0 +1,53 @@
+# AudioVerse
+
+Personal audiophile and DJ platform for Android (Samsung Galaxy S26 Ultra + Galaxy Buds 4 Pro).
+
+**Modules:** AudioVerse Player · AudioVerse DJ · AudioVerse Radio · AudioVerse Studio (future AI stems) · AudioVerse Server (Mac Mini companion)
+
+Architecture: *AudioVerse — Architecture Plan v1.2* (claude.ai doc). Engine: AndroidX Media3, with libVLC as a fallback backend later on.
+
+## Current build: Phase 1 engine gate (v0.1.0-gate)
+
+A single-screen test app that answers the Phase 1 questions on real hardware:
+
+| # | Test | Passes when |
+|---|------|-------------|
+| 1 | Gapless playback | Longest digital silence at the track change is under 5 ms (provisional) and there's no audible gap |
+| 2 | 24-bit / float through DSP | The DSP chain receives 32-bit float at the file's own sample rate |
+| 3 | Jellyfin + Cloudflare Access | Header-only login works, a seek uses an HTTP 206 range request, there's no token in any URL, and credentials only go over HTTPS |
+| 4 | Radio now-playing (ICY) | A stream title arrives within 30 s |
+| 5 | Bit-perfect USB query | The phone reports at least one bit-perfect format for the attached DAC (query only) |
+| 6 | Screen-locked playback | Audio keeps playing for 60 s with the screen locked (you report the result) |
+
+Run tests 1 and 2 with **Float output** both ON and OFF. That shows whether Media3 runs custom audio processors on hi-res float audio. If it doesn't, the DSP needs a custom audio sink.
+
+"Copy results" puts a text report on the clipboard for the AiVerse Council. It contains no URLs, hostnames or tokens.
+
+## Get the APK
+
+1. Push to `main` (or Actions → Android build → Run workflow).
+2. Open the finished run → Artifacts → `audioverse-gate-debug-apk`.
+3. On the phone, allow installs from your browser or file manager, then open the APK.
+
+**Stable signing (recommended):** without it, each build is signed with a new throwaway key, and you have to uninstall before installing the next build. To fix that, create a debug keystore once and add it as the repository secret `DEBUG_KEYSTORE_BASE64`:
+
+```bash
+keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey \
+  -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+base64 -i debug.keystore | pbcopy   # macOS; then paste into GitHub → Settings → Secrets → Actions
+```
+
+Don't commit the keystore. `.gitignore` blocks it.
+
+## Layout
+
+```
+app/            Phase 1 gate app (Compose), PlaybackService (MediaSession)
+core/dsp/       DSP chain: ReplayGain, preamp, vocal stage, 10-band EQ, channel mixer, limiter (+ unit tests)
+core/network/   Header-only auth interceptor, Keystore credential store, privacy-safe HTTP recorder
+core/playback/  PlaybackBackend interface + Media3Backend
+```
+
+## Versions
+
+AGP 8.7.3 · Kotlin 2.0.21 · Media3 1.5.1 · compileSdk 35 · minSdk 29. These are known-good versions picked for the first green build. Bump them once CI passes.
