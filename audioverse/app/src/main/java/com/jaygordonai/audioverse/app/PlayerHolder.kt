@@ -23,6 +23,9 @@ object PlayerHolder {
     private var engine: Engine? = null
     var floatOutput: Boolean = true
         private set
+    /** Phase 1 diagnostic: false = probe only, to isolate our DSP from Media3 itself. */
+    var dspInChain: Boolean = true
+        private set
 
     /** In-memory copy of credentials so HTTP requests don't decrypt on every call. */
     @Volatile var auth: AuthConfig? = null
@@ -33,8 +36,9 @@ object PlayerHolder {
 
     fun get(context: Context): Engine = engine ?: build(context)
 
-    fun rebuild(context: Context, floatOutput: Boolean): Engine {
+    fun rebuild(context: Context, floatOutput: Boolean, dspInChain: Boolean = this.dspInChain): Engine {
         this.floatOutput = floatOutput
+        this.dspInChain = dspInChain
         engine?.backend?.release()
         engine = null
         return build(context).also { onPlayerChanged?.invoke(it.backend.player) }
@@ -62,7 +66,7 @@ object PlayerHolder {
         val backend = Media3Backend(
             context = context,
             floatOutput = floatOutput,
-            processors = arrayOf(probe, dsp),
+            processors = if (dspInChain) arrayOf(probe, dsp) else arrayOf(probe),
             authProvider = { auth }
         )
         return Engine(backend, probe, dsp).also { engine = it }

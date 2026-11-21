@@ -3,8 +3,10 @@ package com.jaygordonai.audioverse.dsp
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /*
  * Merged DSP building blocks (Claude + Council drafts).
@@ -86,8 +88,21 @@ class VocalStage(private val sampleRateHz: Int) {
 
     /** Rolling side/mid energy ratio; near 0 means the track is effectively mono. */
     @Volatile var sideToMidRatio = 1f; private set
+    /** Same ratio in dB (side energy relative to mid energy). */
+    @Volatile var sideToMidDb = 0f; private set
+    /**
+     * Normalised L/R (Pearson) correlation, -1..+1. Near +1 = mono or near-mono,
+     * around 0..0.9 = normal stereo, below 0 = out-of-phase content.
+     */
+    @Volatile var correlation = 0f; private set
+    /** True when centre cancellation will do little: r > 0.98 or side/mid below -24 dB (DJ-03). */
+    val isNearMono: Boolean get() = correlation > NEAR_MONO_CORRELATION || sideToMidDb < NEAR_MONO_SIDE_DB
+
     private var sideEnergy = 0f
     private var midEnergy = 0f
+    private var lrSum = 0f
+    private var llSum = 0f
+    private var rrSum = 0f
 
     var outL = 0f; private set
     var outR = 0f; private set
@@ -104,9 +119,15 @@ class VocalStage(private val sampleRateHz: Int) {
         var mid = (l + r) * 0.5f
         var side = (l - r) * 0.5f
 
-        sideEnergy = sideEnergy * 0.9995f + side * side * 0.0005f
-        midEnergy = midEnergy * 0.9995f + mid * mid * 0.0005f
-        sideToMidRatio = if (midEnergy > 1e-9f) sideEnergy / midEnergy else 1f
+        sideEnergy = sideEnergy * DECAY + side * side * GAIN
+        midEnergy = midEnergy * DECAY + mid * mid * GAIN
+        lrSum = lrSum * DECAY + l * r * GAIN
+        llSum = llSum * DECAY + l * l * GAIN
+        rrSum = rrSum * DECAY + r * r * GAIN
+        sideToMidRatio = if (midEnergy > 1e-12f) sideEnergy / midEnergy else 1f
+        sideToMidDb = 10f * log10(sideToMidRatio.coerceAtLeast(1e-12f))
+        val denom = sqrt(llSum * rrSum)
+        correlation = if (denom > 1e-12f) (lrSum / denom).coerceIn(-1f, 1f) else 0f
 
         val keep = 1f - strength.coerceIn(0f, 1f)
         when (mode) {
@@ -128,7 +149,20 @@ class VocalStage(private val sampleRateHz: Int) {
         outR = mid - side
     }
 
-    fun reset() { bassFilter.reset(); sideEnergy = 0f; midEnergy = 0f; rebuildPending = true }
+    fun reset() {
+        bassFilter.reset()
+        sideEnergy = 0f; midEnergy = 0f; lrSum = 0f; llSum = 0f; rrSum = 0f
+        rebuildPending = true
+    }
+
+    private companion object {
+        // ~43 ms smoothing at 44.1 kHz; the ratios are level-independent, so quiet
+        // and loud passages give the same reading.
+        const val DECAY = 0.9995f
+        const val GAIN = 1f - DECAY
+        const val NEAR_MONO_CORRELATION = 0.98f
+        const val NEAR_MONO_SIDE_DB = -24f
+    }
 }
 
 /**

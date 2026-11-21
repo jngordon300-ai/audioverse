@@ -7,9 +7,18 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+# Least privilege: the build only needs to read the repo.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: audioverse
@@ -24,17 +33,46 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      # Also validates the Gradle wrapper jar checksum.
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      - name: Restore stable debug keystore (optional secret)
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
+            mkdir -p keystore
+            echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > keystore/debug.keystore
+            echo "Using stable debug keystore"
+          else
+            echo "No DEBUG_KEYSTORE_BASE64 secret; using a throwaway debug key"
+          fi
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest
+
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Remove keystore from workspace
+        if: always()
+        run: rm -rf keystore
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: audioverse-debug-apk
           path: audioverse/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: audioverse/**/build/reports/tests/
+          retention-days: 7

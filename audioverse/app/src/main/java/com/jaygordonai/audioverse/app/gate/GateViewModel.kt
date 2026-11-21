@@ -43,6 +43,7 @@ data class TestResult(val status: Status = Status.NOT_RUN, val detail: String = 
 
 data class GateUiState(
     val floatOutput: Boolean = true,
+    val dspInChain: Boolean = true,
     val busy: Boolean = false,
     val hasSavedServer: Boolean = false,
     val results: Map<GateTest, TestResult> = GateTest.entries.associateWith { TestResult() }
@@ -62,11 +63,19 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
     @Volatile private var decoderName = "unknown"
     @Volatile private var lastError: String? = null
     @Volatile private var icyTitle: String? = null
+    @Volatile private var inputFormat = "unknown"
 
     private val analytics = object : AnalyticsListener {
         override fun onAudioTrackInitialized(eventTime: AnalyticsListener.EventTime, audioTrackConfig: AudioSink.AudioTrackConfig) {
             sinkEncoding = audioTrackConfig.encoding
             sinkRate = audioTrackConfig.sampleRate
+        }
+        override fun onAudioInputFormatChanged(
+            eventTime: AnalyticsListener.EventTime, format: androidx.media3.common.Format,
+            decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?
+        ) {
+            inputFormat = "${format.sampleMimeType ?: "?"} ${format.sampleRate / 1000.0} kHz ${format.channelCount} ch" +
+                if (format.pcmEncoding != androidx.media3.common.Format.NO_VALUE) " ${enc(format.pcmEncoding)}" else ""
         }
         override fun onAudioDecoderInitialized(
             eventTime: AnalyticsListener.EventTime, decoderName: String,
@@ -75,7 +84,7 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private val playerListener = object : Player.Listener {
-        override fun onPlayerError(error: PlaybackException) { lastError = error.errorCodeName }
+        override fun onPlayerError(error: PlaybackException) { lastError = describe(error) }
         override fun onMetadata(metadata: Metadata) {
             for (i in 0 until metadata.length()) {
                 val entry = metadata.get(i)
@@ -86,7 +95,7 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         PlayerHolder.loadAuth(ctx)
-        _ui.update { it.copy(floatOutput = PlayerHolder.floatOutput, hasSavedServer = PlayerHolder.auth?.hasJellyfin == true) }
+        _ui.update { it.copy(floatOutput = PlayerHolder.floatOutput, dspInChain = PlayerHolder.dspInChain, hasSavedServer = PlayerHolder.auth?.hasJellyfin == true) }
         attach()
     }
 
@@ -100,9 +109,29 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setFloatOutput(enabled: Boolean) {
         job?.cancel()
-        PlayerHolder.rebuild(ctx, enabled)
+        PlayerHolder.rebuild(ctx, enabled, PlayerHolder.dspInChain)
         attach()
         _ui.update { it.copy(floatOutput = enabled, busy = false) }
+    }
+
+    fun setDspInChain(enabled: Boolean) {
+        job?.cancel()
+        PlayerHolder.rebuild(ctx, PlayerHolder.floatOutput, enabled)
+        attach()
+        _ui.update { it.copy(dspInChain = enabled, busy = false) }
+    }
+
+    /**
+     * Error code plus the cause chain (exception types and messages), so failures
+     * like AUDIO_TRACK_INIT_FAILED show the AudioTrack state and format requested.
+     * Anything that looks like a URL or content URI is masked.
+     */
+    private fun describe(error: PlaybackException): String {
+        val causes = generateSequence(error.cause) { it.cause }.take(4).joinToString(" <- ") { t ->
+            t.javaClass.simpleName + (t.message?.let { ": " + it.take(220) } ?: "")
+        }
+        val masked = causes.replace(Regex("(content|file|https?)://\\S+"), "[uri]")
+        return error.errorCodeName + if (masked.isNotBlank()) " | $masked" else ""
     }
 
     fun stop() {
@@ -152,14 +181,15 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
     fun runHiRes(uri: Uri?) = launchTest(GateTest.HIRES) {
         if (uri == null) return@launchTest TestResult(Status.FAIL, "Pick a 24-bit FLAC file.")
         val e = engine(); val p = e.backend.player
-        sinkEncoding = C.ENCODING_INVALID; sinkRate = 0; decoderName = "unknown"
+        sinkEncoding = C.ENCODING_INVALID; sinkRate = 0; decoderName = "unknown"; inputFormat = "unknown"
         val framesBefore = e.probe.snapshot().framesSeen
         e.backend.setQueue(listOf(uri))
         if (!waitUntil(20_000) { p.playbackState == Player.STATE_READY }) return@launchTest openFailure()
         p.play(); delay(4_000); p.pause()
         val snap = e.probe.snapshot()
         val ran = snap.framesSeen > framesBefore
-        val base = "Float output ${if (_ui.value.floatOutput) "ON" else "OFF"}. Decoder: $decoderName. " +
+        val base = "Float output ${if (_ui.value.floatOutput) "ON" else "OFF"}, DSP ${if (_ui.value.dspInChain) "IN" else "OUT"}. " +
+            "File: $inputFormat. Decoder: $decoderName. " +
             "Output to Android: ${enc(sinkEncoding)} at ${sinkRate / 1000.0} kHz. "
         when {
             lastError != null -> TestResult(Status.FAIL, base + "Playback error: $lastError")
@@ -281,7 +311,7 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
         appendLine("AudioVerse Phase 1 gate results")
         appendLine(SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date()))
         appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
-        appendLine("Engine: Media3 1.5.1, float output ${if (_ui.value.floatOutput) "ON" else "OFF"}")
+        appendLine("Engine: Media3 1.5.1, float output ${if (_ui.value.floatOutput) "ON" else "OFF"}, DSP ${if (_ui.value.dspInChain) "in chain" else "out of chain"}")
         appendLine()
         _ui.value.results.forEach { (t, r) -> appendLine("${t.title}: ${r.status}\n  ${r.detail}") }
     }
@@ -312,6 +342,7 @@ class GateViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun waitUntil(timeoutMs: Long, cond: () -> Boolean): Boolean {
         val end = SystemClock.uptimeMillis() + timeoutMs
         while (SystemClock.uptimeMillis() < end) {
+            if (lastError != null) return false // fail fast instead of waiting out the timeout
             if (cond()) return true
             delay(50)
         }

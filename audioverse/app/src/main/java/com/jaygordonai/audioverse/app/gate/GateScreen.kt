@@ -94,6 +94,31 @@ fun GateScreen(vm: GateViewModel) {
                 )
             }
         }
+        item {
+            Row(
+                Modifier.fillMaxWidth().background(Values.Card).border(1.dp, Values.Rule).padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text("DSP in chain", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "Turn OFF to test Media3 with only the pass-through probe. If playback works with DSP OFF, our DSP stage is the cause.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Values.InkBody
+                    )
+                }
+                Switch(
+                    checked = s.dspInChain, onCheckedChange = vm::setDspInChain, enabled = !s.busy,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Values.Card,
+                        checkedTrackColor = Values.GoldText,
+                        uncheckedThumbColor = Values.GoldText,
+                        uncheckedTrackColor = Values.Paper,
+                        uncheckedBorderColor = Values.Gold
+                    )
+                )
+            }
+        }
 
         item {
             TestCard(GateTest.GAPLESS, s.results.getValue(GateTest.GAPLESS)) {
@@ -194,7 +219,7 @@ private fun Masthead() {
     Column(Modifier.padding(top = 24.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("PHASE 1 · ENGINE GATE", style = Values.Kicker, color = Values.InkMuted)
-            Text("V0.1.0", style = Values.Kicker, color = Values.InkMuted)
+            Text("V0.1.2", style = Values.Kicker, color = Values.InkMuted)
         }
         Text(
             "AudioVerse",
