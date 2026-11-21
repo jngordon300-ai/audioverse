@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-enum class Screen { LIBRARY, NOW_PLAYING, SOUND, DIAGNOSTICS }
+enum class Screen { LIBRARY, NOW_PLAYING, VIDEO, SOUND, DIAGNOSTICS }
 
 data class PlayerUi(
     val screen: Screen = Screen.LIBRARY,

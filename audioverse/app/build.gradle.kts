@@ -12,8 +12,8 @@ android {
         applicationId = "com.jaygordonai.audioverse"
         minSdk = 29
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.2.0-alpha"
+        versionCode = 6
+        versionName = "0.3.0-alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -63,8 +63,11 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.extractor)
     implementation(libs.media3.session)
+    implementation(libs.media3.transformer)
+    implementation(libs.media3.ui)
     implementation(libs.kotlinx.coroutines.android)
 
+    testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
 }

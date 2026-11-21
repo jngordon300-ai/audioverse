@@ -66,11 +66,12 @@ import com.jaygordonai.audioverse.app.player.Screen
 import com.jaygordonai.audioverse.app.player.Track
 import com.jaygordonai.audioverse.app.theme.AV
 import com.jaygordonai.audioverse.app.theme.ValuesTheme
+import com.jaygordonai.audioverse.app.video.VideoEditorViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun AudioVerseApp(vm: PlayerViewModel, gateVm: () -> GateViewModel) {
+fun AudioVerseApp(vm: PlayerViewModel, gateVm: () -> GateViewModel, videoVm: () -> VideoEditorViewModel) {
     val s by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
@@ -87,11 +88,12 @@ fun AudioVerseApp(vm: PlayerViewModel, gateVm: () -> GateViewModel) {
                 when (s.screen) {
                     Screen.LIBRARY -> LibraryScreen(s, vm, onGrant = { launcher.launch(permission) })
                     Screen.NOW_PLAYING -> NowPlayingScreen(s, vm)
+                    Screen.VIDEO -> VideoScreen(videoVm())
                     Screen.SOUND -> SoundScreen(s, vm)
                     Screen.DIAGNOSTICS -> ValuesTheme { GateScreen(gateVm()) }
                 }
             }
-            if (s.screen != Screen.NOW_PLAYING && s.nowPlaying != null) MiniPlayer(s, vm)
+            if (s.screen != Screen.NOW_PLAYING && s.screen != Screen.VIDEO && s.nowPlaying != null) MiniPlayer(s, vm)
             BottomNav(s.screen, vm::show)
         }
     }
@@ -283,8 +285,9 @@ private fun BottomNav(current: Screen, onSelect: (Screen) -> Unit) {
         listOf(
             Screen.LIBRARY to "Listen",
             Screen.NOW_PLAYING to "Playing",
+            Screen.VIDEO to "Video",
             Screen.SOUND to "Sound",
-            Screen.DIAGNOSTICS to "Diagnostics"
+            Screen.DIAGNOSTICS to "Tests"
         ).forEach { (screen, label) ->
             NavigationBarItem(
                 selected = current == screen,

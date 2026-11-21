@@ -18,12 +18,14 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.jaygordonai.audioverse.app.player.PlayerViewModel
 import com.jaygordonai.audioverse.app.theme.AudioVerseTheme
 import com.jaygordonai.audioverse.app.ui.AudioVerseApp
+import com.jaygordonai.audioverse.app.video.VideoEditorViewModel
 import com.jaygordonai.audioverse.app.gate.GateViewModel
 
 class MainActivity : ComponentActivity() {
 
     private val playerVm: PlayerViewModel by viewModels()
     private val gateVm: GateViewModel by viewModels()
+    private val videoVm: VideoEditorViewModel by viewModels()
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -37,7 +39,7 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             AudioVerseTheme {
-                AudioVerseApp(playerVm, gateVm = { gateVm })
+                AudioVerseApp(playerVm, gateVm = { gateVm }, videoVm = { videoVm })
             }
         }
     }
