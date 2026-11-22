@@ -6,7 +6,21 @@ Personal audiophile and DJ platform for Android (Samsung Galaxy S26 Ultra + Gala
 
 Architecture: *AudioVerse — Architecture Plan v1.2* (claude.ai doc). Engine: AndroidX Media3, with libVLC as a fallback backend later on.
 
-## Current build: Phase 1 engine gate (v0.1.0-gate)
+## Current build: v0.4.0-alpha — AudioVerse + Transmission Across the Diaspora
+
+One app for the phone's music and live radio, plus video:
+
+| Tab | What it does |
+|-----|--------------|
+| **Library** | Categories: Songs · Artists · Albums · Playlists. Playlists mix phone songs and live stations; Favorites is built in. `+` adds anything to a playlist; ↑ ↓ ✕ reorder and remove inside a playlist. |
+| **Radio** | The Transmission catalog (`app/src/main/assets/stations.json`, 166 entries, 75 live streams). Category chips (Featured, Philly, Hip-Hop, R&B, Gospel, Jazz, Talk, HBCU, Afrobeats, Amapiano, Reggae, UK, Podcasts, SiriusXM…), search and Shuffle. Live streams play in the AudioVerse engine, so the EQ, limiter, lock screen and Buds controls apply; next / previous move to the next station. Song titles from the stream (ICY) show in the app and on the lock screen. Podcasts, SiriusXM and other platforms open in their own app. |
+| **Playing** | Now playing. Live stations show LIVE and the current song title instead of a seek bar. ♥ Favorite and + Playlist. |
+| **Video** | **Watch**: Music TV channels (YouTube no-cookie embed of each channel's uploads, full screen supported) and a player for any video you pick from the phone. **Edit**: the existing cut editor (Mark start / End, export segments to Movies/AudioVerse). "Cut it ›" moves from Watch to Edit at the same spot. |
+| **Sound** | DSP settings. **Engine tests ›** at the top opens the Phase 1 gate screen. |
+
+To update the station list, edit `stations.json` (same fields as the Transmission HTML: name, city, tags, cat, type, url, ytChannel).
+
+## Phase 1 engine gate (v0.1.0-gate)
 
 A single-screen test app that answers the Phase 1 questions on real hardware:
 
