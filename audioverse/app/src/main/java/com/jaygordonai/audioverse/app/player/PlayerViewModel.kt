@@ -8,10 +8,18 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Metadata
+import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.jaygordonai.audioverse.app.PlayerHolder
+import com.jaygordonai.audioverse.app.library.Playlist
+import com.jaygordonai.audioverse.app.library.PlaylistEntry
+import com.jaygordonai.audioverse.app.library.PlaylistOps
+import com.jaygordonai.audioverse.app.library.PlaylistStore
+import com.jaygordonai.audioverse.app.radio.Station
+import com.jaygordonai.audioverse.app.radio.StationCatalog
 import com.jaygordonai.audioverse.dsp.ReplayGainMode
 import com.jaygordonai.audioverse.dsp.VocalStage
 import kotlinx.coroutines.delay
@@ -22,13 +30,32 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-enum class Screen { LIBRARY, NOW_PLAYING, VIDEO, SOUND, DIAGNOSTICS }
+enum class Screen { LIBRARY, RADIO, NOW_PLAYING, DJ, VIDEO, SOUND, DIAGNOSTICS }
+
+/** Library categories. */
+enum class LibTab(val label: String) { SONGS("Songs"), ARTISTS("Artists"), ALBUMS("Albums"), PLAYLISTS("Playlists") }
+
+/** A row in the Artists / Albums / Playlists category lists. */
+data class LibGroup(val key: String, val title: String, val count: Int)
 
 data class PlayerUi(
     val screen: Screen = Screen.LIBRARY,
     val hasPermission: Boolean = false,
     val loading: Boolean = false,
     val tracks: List<Track> = emptyList(),
+    val libTab: LibTab = LibTab.SONGS,
+    /** Open artist, album or playlist id (as text) inside the current tab; null = the category list. */
+    val group: String? = null,
+    /** Songs shown right now (what the wheel scrolls and what plays). */
+    val visible: List<Track> = emptyList(),
+    val groups: List<LibGroup> = emptyList(),
+    val playlists: List<Playlist> = emptyList(),
+    /** Track or station waiting for the "Add to playlist" dialog. */
+    val addTarget: Track? = null,
+    val stations: List<Station> = emptyList(),
+    val featured: List<String> = emptyList(),
+    /** Song title from the station's stream (ICY), when it sends one. */
+    val streamTitle: String? = null,
     val highlighted: Int = 0,
     val nowPlaying: Track? = null,
     val isPlaying: Boolean = false,
@@ -52,10 +79,24 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private val audio = app.getSystemService(AudioManager::class.java)
     private var queue: List<Track> = emptyList()
     private var volumeJob: kotlinx.coroutines.Job? = null
+    private var lastIcyTitle: String? = null
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) = _ui.update { it.copy(isPlaying = isPlaying) }
-        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = syncNowPlaying()
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            // PLAYLIST_CHANGED also fires when we refresh the lock-screen title; keep the song title then.
+            if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
+                lastIcyTitle = null
+                _ui.update { it.copy(streamTitle = null) }
+            }
+            syncNowPlaying()
+        }
+        override fun onMetadata(metadata: Metadata) {
+            for (i in 0 until metadata.length()) {
+                val e = metadata.get(i)
+                if (e is IcyInfo) e.title?.trim()?.takeIf { it.isNotEmpty() && it != "-" }?.let { t -> onStreamTitle(t) }
+            }
+        }
         override fun onPlayerError(error: PlaybackException) =
             _ui.update { it.copy(error = "Can't play this file (${error.errorCodeName.removePrefix("ERROR_CODE_").lowercase().replace('_', ' ')})") }
     }
@@ -76,6 +117,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         ensureAttached()
+        viewModelScope.launch {
+            val cat = try { StationCatalog.load(ctx) } catch (e: Exception) { StationCatalog.Data(emptyList(), emptyList()) }
+            val lists = PlaylistStore.load(ctx)
+            _ui.update { it.copy(stations = cat.stations, featured = cat.featured, playlists = lists) }
+            recompute()
+        }
         viewModelScope.launch {
             while (isActive) {
                 ensureAttached()
@@ -106,13 +153,44 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val tracks = try { LocalLibrary.load(ctx) } catch (e: SecurityException) { emptyList() }
             _ui.update { it.copy(tracks = tracks, loading = false, highlighted = 0) }
+            recompute()
         }
     }
 
-    fun playFrom(index: Int) {
-        val tracks = _ui.value.tracks
+    // ---------------- Library categories ----------------
+    fun setLibTab(tab: LibTab) { _ui.update { it.copy(libTab = tab, group = null, highlighted = 0) }; recompute() }
+    fun openGroup(key: String?) { _ui.update { it.copy(group = key, highlighted = 0) }; recompute() }
+
+    /** Rebuilds the visible song list and the category rows from the library, tab and group. */
+    private fun recompute() = _ui.update { s ->
+        val all = s.tracks
+        val (groups, visible) = when (s.libTab) {
+            LibTab.SONGS -> emptyList<LibGroup>() to all
+            LibTab.ARTISTS -> {
+                val g = all.groupBy { it.artist }.map { (k, v) -> LibGroup(k, k, v.size) }.sortedBy { it.title.lowercase() }
+                g to (s.group?.let { k -> all.filter { it.artist == k } } ?: emptyList())
+            }
+            LibTab.ALBUMS -> {
+                val g = all.filter { it.album.isNotBlank() }.groupBy { it.album }
+                    .map { (k, v) -> LibGroup(k, "$k · ${v.first().artist}", v.size) }.sortedBy { it.title.lowercase() }
+                g to (s.group?.let { k -> all.filter { it.album == k }.sortedBy { it.trackNumber } } ?: emptyList())
+            }
+            LibTab.PLAYLISTS -> {
+                val g = s.playlists.map { LibGroup(it.id.toString(), it.name, it.entries.size) }
+                val open = s.group?.toLongOrNull()?.let { id -> s.playlists.firstOrNull { it.id == id } }
+                g to (open?.entries?.map { e -> all.firstOrNull { it.id == e.id } ?: e.toTrack() } ?: emptyList())
+            }
+        }
+        s.copy(groups = groups, visible = visible, highlighted = s.highlighted.coerceIn(0, (visible.size - 1).coerceAtLeast(0)))
+    }
+
+    fun playFrom(index: Int) = playQueue(_ui.value.visible, index)
+
+    /** Plays any mix of phone songs and live stations; next/previous walk the list. */
+    fun playQueue(tracks: List<Track>, index: Int, openNowPlaying: Boolean = true) {
         if (index !in tracks.indices) return
         queue = tracks
+        lastIcyTitle = null
         val items = tracks.map { t ->
             MediaItem.Builder()
                 .setUri(t.uri)
@@ -122,6 +200,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                         .setTitle(t.title)
                         .setArtist(t.artist)
                         .setAlbumTitle(t.album)
+                        .setIsPlayable(true)
                         .build()
                 )
                 .build()
@@ -130,8 +209,79 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         p.setMediaItems(items, index, 0)
         p.prepare()
         p.play()
-        _ui.update { it.copy(error = null, highlighted = index, screen = Screen.NOW_PLAYING) }
+        _ui.update {
+            it.copy(
+                error = null, streamTitle = null,
+                highlighted = if (it.screen == Screen.LIBRARY) index else it.highlighted,
+                screen = if (openNowPlaying) Screen.NOW_PLAYING else it.screen
+            )
+        }
         syncNowPlaying()
+    }
+
+    // ---------------- Radio ----------------
+    /** Plays one station; next/previous move through the other playable stations in the same view. */
+    fun playStation(view: List<Station>, station: Station) {
+        val playable = view.filter { it.playable }
+        val i = playable.indexOfFirst { it.url == station.url }
+        if (i < 0) return
+        playQueue(playable.map { it.toTrack() }, i, openNowPlaying = false)
+    }
+
+    fun shuffleRadio(view: List<Station>) {
+        val playable = view.filter { it.playable }
+        if (playable.isEmpty()) return
+        playStation(playable, playable.random())
+    }
+
+    /** Shows the stream's song title in the app and on the lock screen without restarting the stream. */
+    private fun onStreamTitle(title: String) {
+        if (lastIcyTitle == title) return
+        lastIcyTitle = title
+        _ui.update { it.copy(streamTitle = title) }
+        val p = player()
+        val item = p.currentMediaItem ?: return
+        val track = queue.firstOrNull { it.id.toString() == item.mediaId } ?: return
+        if (!track.live) return
+        val meta = item.mediaMetadata.buildUpon().setArtist(title).setAlbumTitle(track.title).build()
+        try { p.replaceMediaItem(p.currentMediaItemIndex, item.buildUpon().setMediaMetadata(meta).build()) } catch (_: Exception) { }
+    }
+
+    // ---------------- Playlists ----------------
+    fun askAddToPlaylist(t: Track?) = _ui.update { it.copy(addTarget = t) }
+
+    private fun editPlaylists(f: (List<Playlist>) -> List<Playlist>) {
+        val next = f(_ui.value.playlists)
+        _ui.update { it.copy(playlists = next) }
+        recompute()
+        viewModelScope.launch { PlaylistStore.save(ctx, next) }
+    }
+
+    fun addTo(playlistId: Long, t: Track) = editPlaylists { PlaylistOps.add(it, playlistId, PlaylistEntry.from(t)) }
+    fun toggleFavorite(t: Track) = editPlaylists { PlaylistOps.toggle(it, PlaylistOps.FAVORITES_ID, PlaylistEntry.from(t)) }
+    fun isFavorite(id: Long): Boolean = PlaylistOps.contains(_ui.value.playlists, PlaylistOps.FAVORITES_ID, id)
+
+    fun createPlaylist(name: String, thenAdd: Track? = null) {
+        val id = System.currentTimeMillis()
+        editPlaylists { lists ->
+            val made = PlaylistOps.create(lists, name, id)
+            if (thenAdd != null && made.size > lists.size) PlaylistOps.add(made, id, PlaylistEntry.from(thenAdd)) else made
+        }
+    }
+
+    fun removeFromOpenPlaylist(index: Int) {
+        val id = _ui.value.group?.toLongOrNull() ?: return
+        editPlaylists { PlaylistOps.removeAt(it, id, index) }
+    }
+
+    fun moveInOpenPlaylist(index: Int, dir: Int) {
+        val id = _ui.value.group?.toLongOrNull() ?: return
+        editPlaylists { PlaylistOps.move(it, id, index, index + dir) }
+    }
+
+    fun deletePlaylist(id: Long) {
+        editPlaylists { PlaylistOps.delete(it, id) }
+        if (_ui.value.group == id.toString()) openGroup(null)
     }
 
     private fun syncNowPlaying() {
@@ -161,7 +311,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     /** Menu = back: Now Playing -> Library; other screens -> Now Playing if playing, else Library. */
     fun menu() = _ui.update {
         it.copy(screen = when (it.screen) {
-            Screen.NOW_PLAYING -> Screen.LIBRARY
+            Screen.NOW_PLAYING -> if (it.nowPlaying?.live == true) Screen.RADIO else Screen.LIBRARY
             else -> if (it.nowPlaying != null) Screen.NOW_PLAYING else Screen.LIBRARY
         })
     }
@@ -169,7 +319,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun wheelTick(dir: Int) {
         when (_ui.value.screen) {
             Screen.LIBRARY -> _ui.update {
-                val max = (it.tracks.size - 1).coerceAtLeast(0)
+                val max = (it.visible.size - 1).coerceAtLeast(0)
                 it.copy(highlighted = (it.highlighted + dir).coerceIn(0, max))
             }
             else -> changeVolume(dir)

@@ -26,6 +26,8 @@ class MainActivity : ComponentActivity() {
     private val playerVm: PlayerViewModel by viewModels()
     private val gateVm: GateViewModel by viewModels()
     private val videoVm: VideoEditorViewModel by viewModels()
+    private val iptvVm: com.jaygordonai.audioverse.app.iptv.IptvViewModel by viewModels()
+    private val djVm: com.jaygordonai.audioverse.app.dj.DjViewModel by viewModels()
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -39,7 +41,7 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             AudioVerseTheme {
-                AudioVerseApp(playerVm, gateVm = { gateVm }, videoVm = { videoVm })
+                AudioVerseApp(playerVm, gateVm = { gateVm }, videoVm = { videoVm }, iptvVm = { iptvVm }, djVm = { djVm })
             }
         }
     }
