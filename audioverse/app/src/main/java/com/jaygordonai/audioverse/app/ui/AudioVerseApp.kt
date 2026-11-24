@@ -81,7 +81,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun AudioVerseApp(vm: PlayerViewModel, gateVm: () -> GateViewModel, videoVm: () -> VideoEditorViewModel) {
+fun AudioVerseApp(
+    vm: PlayerViewModel,
+    gateVm: () -> GateViewModel,
+    videoVm: () -> VideoEditorViewModel,
+    iptvVm: () -> com.jaygordonai.audioverse.app.iptv.IptvViewModel
+) {
     val s by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
@@ -103,7 +108,7 @@ fun AudioVerseApp(vm: PlayerViewModel, gateVm: () -> GateViewModel, videoVm: () 
                     Screen.LIBRARY -> LibraryScreen(s, vm, onGrant = { launcher.launch(permission) })
                     Screen.RADIO -> RadioScreen(s, vm)
                     Screen.NOW_PLAYING -> NowPlayingScreen(s, vm)
-                    Screen.VIDEO -> VideoHub(s, videoVm(), onImmersive = { immersive = it })
+                    Screen.VIDEO -> VideoHub(s, videoVm(), iptvVm(), onImmersive = { immersive = it })
                     Screen.SOUND -> SoundScreen(s, vm)
                     Screen.DIAGNOSTICS -> ValuesTheme { GateScreen(gateVm()) }
                 }

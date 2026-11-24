@@ -22,6 +22,10 @@
 | External links (v0.4) | Only http/https links are handed to other apps. |
 | Phone video player (v0.4) | Same system file picker as the editor: one file at a time, no video or photo permission. |
 
+| IPTV links (v0.5) | The M3U link contains the account's username and password. It is typed into a masked field with a password keyboard (no suggestions or learning), held only in memory until saved, then stored encrypted (AES-256-GCM, its own Android Keystore key `audioverse_iptv_v1`) in `audioverse_iptv` prefs, which backup and device transfer exclude. The screen shows only the name you gave it. It is never in the repo, logs, error messages or `toString()`. Remove deletes it, and removing the last playlist wipes the store. |
+| IPTV channels (v0.5) | Channel lists (whose stream URLs also contain the login) stay in memory only; nothing is cached to disk. Channels can't be added to Library playlists for that reason. Logos are not loaded (no extra hosts contacted). |
+| IPTV transport (v0.5) | Separate OkHttp client with no auth interceptor and no logging, so Jellyfin/Access credentials can never be sent to an IPTV host. If the link is http://, the app warns that the login travels unencrypted (many providers only offer http). If a provider rejects the AudioVerse user agent (401/403) the playlist request is retried once with a VLC user agent, and streams use that one too unless the playlist sets its own. |
+
 ## Known follow-ups
 - Station `WHUR World (HD2)` uses the same stream URL as `WHUR 96.3` in the catalog; check the HD2 URL.
 - Pin GitHub Actions to commit SHAs once versions settle.

@@ -59,23 +59,38 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
+import com.jaygordonai.audioverse.app.iptv.IptvViewModel
 import com.jaygordonai.audioverse.app.player.PlayerUi
 import com.jaygordonai.audioverse.app.radio.Station
 import com.jaygordonai.audioverse.app.radio.StationCatalog
 import com.jaygordonai.audioverse.app.theme.AV
 import com.jaygordonai.audioverse.app.video.VideoEditorViewModel
 
-/** Video tab: Watch (Music TV + phone videos) or Edit (the cut editor). */
+/** Video tab: Watch (Music TV + phone videos), TV (IPTV / M3U) or Edit (the cut editor). */
 @Composable
-fun VideoHub(s: PlayerUi, vm: VideoEditorViewModel, onImmersive: (Boolean) -> Unit) {
+fun VideoHub(s: PlayerUi, vm: VideoEditorViewModel, iptv: IptvViewModel, onImmersive: (Boolean) -> Unit) {
+    val activity = LocalContext.current as? Activity
     var mode by rememberSaveable { mutableStateOf("WATCH") }
+    var tvFull by rememberSaveable { mutableStateOf(false) }
+    // Only the TV mode drives full screen from here; Watch manages its own.
+    LaunchedEffect(tvFull) {
+        if (mode == "TV") {
+            onImmersive(tvFull)
+            activity?.requestedOrientation =
+                if (tvFull) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+    BackHandler(enabled = tvFull) { tvFull = false }
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp)) {
-            ChipRow(listOf("WATCH" to "Watch", "EDIT" to "Edit"), mode) { mode = it }
+        if (!tvFull) Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp)) {
+            ChipRow(listOf("WATCH" to "Watch", "TV" to "TV", "EDIT" to "Edit"), mode) { mode = it }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            if (mode == "WATCH") WatchScreen(s, vm, onImmersive, onEdit = { mode = "EDIT" })
-            else VideoScreen(vm)
+            when (mode) {
+                "WATCH" -> WatchScreen(s, vm, onImmersive, onEdit = { mode = "EDIT" })
+                "TV" -> IptvScreen(iptv, full = tvFull, onFullscreen = { tvFull = it })
+                else -> VideoScreen(vm)
+            }
         }
     }
 }
