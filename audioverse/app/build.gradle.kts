@@ -12,8 +12,8 @@ android {
         applicationId = "com.jaygordonai.audioverse"
         minSdk = 29
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.5.0-alpha"
+        versionCode = 9
+        versionName = "0.6.0-alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

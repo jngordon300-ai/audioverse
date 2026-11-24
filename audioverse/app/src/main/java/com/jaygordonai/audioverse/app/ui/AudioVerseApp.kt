@@ -85,7 +85,8 @@ fun AudioVerseApp(
     vm: PlayerViewModel,
     gateVm: () -> GateViewModel,
     videoVm: () -> VideoEditorViewModel,
-    iptvVm: () -> com.jaygordonai.audioverse.app.iptv.IptvViewModel
+    iptvVm: () -> com.jaygordonai.audioverse.app.iptv.IptvViewModel,
+    djVm: () -> com.jaygordonai.audioverse.app.dj.DjViewModel
 ) {
     val s by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -108,13 +109,14 @@ fun AudioVerseApp(
                     Screen.LIBRARY -> LibraryScreen(s, vm, onGrant = { launcher.launch(permission) })
                     Screen.RADIO -> RadioScreen(s, vm)
                     Screen.NOW_PLAYING -> NowPlayingScreen(s, vm)
+                    Screen.DJ -> DjScreen(s, djVm())
                     Screen.VIDEO -> VideoHub(s, videoVm(), iptvVm(), onImmersive = { immersive = it })
                     Screen.SOUND -> SoundScreen(s, vm)
                     Screen.DIAGNOSTICS -> ValuesTheme { GateScreen(gateVm()) }
                 }
             }
             if (!immersive) {
-                if (s.screen != Screen.NOW_PLAYING && s.screen != Screen.VIDEO && s.nowPlaying != null) MiniPlayer(s, vm)
+                if (s.screen != Screen.NOW_PLAYING && s.screen != Screen.VIDEO && s.screen != Screen.DJ && s.nowPlaying != null) MiniPlayer(s, vm)
                 BottomNav(s.screen, vm::show)
             }
         }
@@ -468,6 +470,7 @@ private fun BottomNav(current: Screen, onSelect: (Screen) -> Unit) {
             Screen.LIBRARY to "Library",
             Screen.RADIO to "Radio",
             Screen.NOW_PLAYING to "Playing",
+            Screen.DJ to "DJ",
             Screen.VIDEO to "Video",
             Screen.SOUND to "Sound"
         ).forEach { (screen, label) ->
@@ -475,7 +478,7 @@ private fun BottomNav(current: Screen, onSelect: (Screen) -> Unit) {
                 selected = current == screen,
                 onClick = { onSelect(screen) },
                 icon = { Box(Modifier.size(6.dp).background(if (current == screen) AV.Amber else AV.Line, RoundedCornerShape(3.dp))) },
-                label = { Text(label, fontSize = 12.sp) },
+                label = { Text(label, fontSize = 11.sp, maxLines = 1) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedTextColor = AV.Amber, unselectedTextColor = AV.TextMuted,
                     indicatorColor = AV.Surface

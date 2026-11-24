@@ -30,7 +30,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-enum class Screen { LIBRARY, RADIO, NOW_PLAYING, VIDEO, SOUND, DIAGNOSTICS }
+enum class Screen { LIBRARY, RADIO, NOW_PLAYING, DJ, VIDEO, SOUND, DIAGNOSTICS }
 
 /** Library categories. */
 enum class LibTab(val label: String) { SONGS("Songs"), ARTISTS("Artists"), ALBUMS("Albums"), PLAYLISTS("Playlists") }

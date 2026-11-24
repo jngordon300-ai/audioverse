@@ -26,6 +26,9 @@
 | IPTV channels (v0.5) | Channel lists (whose stream URLs also contain the login) stay in memory only; nothing is cached to disk. Channels can't be added to Library playlists for that reason. Logos are not loaded (no extra hosts contacted). |
 | IPTV transport (v0.5) | Separate OkHttp client with no auth interceptor and no logging, so Jellyfin/Access credentials can never be sent to an IPTV host. If the link is http://, the app warns that the login travels unencrypted (many providers only offer http). If a provider rejects the AudioVerse user agent (401/403) the playlist request is retried once with a VLC user agent, and streams use that one too unless the playlist sets its own. |
 
+| DJ decks (v0.6) | No new permissions or data. Decks use the same engine and network client as the player (credentials only go to the configured Jellyfin/Access host over HTTPS). Nothing about a mix is saved. Decks don't take audio focus, so a call or another app won't pause them automatically; they aren't on the lock screen, and the screen stays on while a deck plays. |
+| Hearing | Each deck is limited (−4 dBFS on Smooth, −7 dBFS on Scratch cut) so the summed mix stays below 0 dBFS; Android's own volume and hearing-safety warning still apply on top. |
+
 ## Known follow-ups
 - Station `WHUR World (HD2)` uses the same stream URL as `WHUR 96.3` in the catalog; check the HD2 URL.
 - Pin GitHub Actions to commit SHAs once versions settle.

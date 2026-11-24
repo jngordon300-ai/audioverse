@@ -43,6 +43,8 @@ class Media3Backend(
     useProcessingSink: Boolean,
     processors: Array<AudioProcessor>,
     authProvider: () -> AuthConfig?,
+    /** false for DJ decks: two decks must play at once, so neither may take audio focus from the other. */
+    handleAudioFocus: Boolean = true,
     val httpRecorder: HttpEventRecorder = HttpEventRecorder(authProvider)
 ) : PlaybackBackend {
 
@@ -90,7 +92,7 @@ class Media3Backend(
                 .setUsage(C.USAGE_MEDIA)
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                 .build(),
-            /* handleAudioFocus = */ true
+            handleAudioFocus
         )
         .setHandleAudioBecomingNoisy(true)
         .setWakeMode(C.WAKE_MODE_NETWORK)
