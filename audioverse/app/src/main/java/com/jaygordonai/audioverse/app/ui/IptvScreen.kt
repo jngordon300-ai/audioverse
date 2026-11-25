@@ -113,25 +113,44 @@ fun IptvScreen(vm: IptvViewModel, full: Boolean, onFullscreen: (Boolean) -> Unit
                     color = if (s.notice != null) AV.Amber else AV.TextMuted, fontSize = 13.sp
                 )
             }
-            if (s.sources.isNotEmpty()) TextButton(onClick = { adding = true }) { Text("+ Add", color = AV.Amber) }
+            TextButton(onClick = { adding = true }) { Text("+ Add", color = AV.Amber) }
         }
 
-        if (s.sources.isEmpty()) {
+        val mine = s.sources.filter { !it.preset }
+        val free = s.sources.filter { it.preset }
+        Spacer(Modifier.height(6.dp))
+        if (mine.isNotEmpty()) {
+            Text("Your playlists", color = AV.TextMuted, fontSize = 11.sp)
+            ChipRow(mine.map { it.id.toString() to it.name }, s.selectedId?.toString() ?: "") { vm.select(it.toLong()) }
+        }
+        Text("Free channels (no login)", color = AV.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+        ChipRow(free.map { it.id.toString() to it.name }, s.selectedId?.toString() ?: "") { vm.select(it.toLong()) }
+
+        val current = s.sources.firstOrNull { it.id == s.selectedId }
+        if (current == null) {
             Spacer(Modifier.height(10.dp))
-            AddSourceCard(vm, onDone = {})
+            if (mine.isEmpty()) AddSourceCard(vm, onDone = {})
+            else Text("Pick a playlist above.", color = AV.TextMuted)
             return@Column
         }
-
-        Spacer(Modifier.height(6.dp))
-        ChipRow(s.sources.map { it.id.toString() to it.name }, s.selectedId?.toString() ?: "") { vm.select(it.toLong()) }
-        val current = s.sources.firstOrNull { it.id == s.selectedId }
-        if (current != null) Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (current.plainHttp) "⚠ This link is http://, so your login travels unencrypted. Use an https link if your provider has one." else "Link saved encrypted on this phone",
+                when {
+                    current.preset -> "Public list, unofficial and community-run: some channels may be offline"
+                    current.plainHttp -> "⚠ This link is http://, so your login travels unencrypted. Use an https link if your provider has one."
+                    else -> "Saved encrypted on this device"
+                },
                 color = if (current.plainHttp) AV.Warn else AV.TextMuted, fontSize = 11.sp, modifier = Modifier.weight(1f)
             )
             TextButton(onClick = vm::reload) { Text("Reload", color = AV.Amber, fontSize = 12.sp) }
-            TextButton(onClick = { removing = current.id }) { Text("Remove", color = AV.TextMuted, fontSize = 12.sp) }
+            if (!current.preset) TextButton(onClick = { removing = current.id }) { Text("Remove", color = AV.TextMuted, fontSize = 12.sp) }
+        }
+        if (s.hiddenAdult > 0 || s.showAdult) Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (s.showAdult) "Adult channels shown" else "${s.hiddenAdult} adult channels hidden",
+                color = AV.TextMuted, fontSize = 11.sp, modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = { vm.setShowAdult(!s.showAdult) }) { Text(if (s.showAdult) "Hide" else "Show", color = AV.TextMuted, fontSize = 12.sp) }
         }
 
         s.playing?.let { ch ->

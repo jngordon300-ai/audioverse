@@ -33,6 +33,10 @@
 | Open with / share (v0.7) | AudioVerse accepts only local files (content:// and file://) for audio, video and M3U, and text shares. It never claims web links. Shared or opened M3U content and links are shown in a confirm dialog and saved only if you tap Import; the shared text stays in memory until then. Files opened this way use Android's temporary read grant. |
 | Pasted IPTV lists (v0.7) | Pasted M3U text or stream lists are stored encrypted with the IPTV Keystore key (capped at 1 MB) and deleted with Remove. The paste box uses a password keyboard so the keyboard doesn't learn the links. |
 
+| Free TV lists (v0.8) | Built-in https playlists with no login; loading them reveals only your IP address to GitHub / the stream hosts. The Pluto and Samsung lists are unofficial third-party builds. Adult groups are hidden by default (setting kept in app-private prefs). |
+| Android TV (v0.8) | Same permissions as the phone. Leanback and touchscreen are declared optional, so nothing new is requested. |
+| Browser edition (v0.8) | `web/AudioVerse.html`: no server or account, and all scripts are inlined (hls.js and mpegts.js from npm, Apache-2.0). A Content-Security-Policy blocks other script sources and frames other than youtube-nocookie. Local files are read in the browser only. localStorage holds playlists/settings; IPTV links are session-only unless "Remember" is ticked (then stored unencrypted, with a warning). |
+
 ## Known follow-ups
 - Station `WHUR World (HD2)` uses the same stream URL as `WHUR 96.3` in the catalog; check the HD2 URL.
 - Pin GitHub Actions to commit SHAs once versions settle.

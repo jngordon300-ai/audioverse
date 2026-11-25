@@ -10,9 +10,14 @@
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
+    <!-- Runs on phones and on Android TV / Google TV boxes (e.g. Onn 4K): neither a touchscreen nor leanback is required. -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+
     <application
         android:label="@string/app_name"
         android:icon="@drawable/ic_launcher"
+        android:banner="@drawable/tv_banner"
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -29,6 +34,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
             <!-- "Open with" / default player for music files (MP3, FLAC, Opus, M4A, WAV…) and M3U playlists.
                  Local files only (content:// and file://); web links are not claimed. -->

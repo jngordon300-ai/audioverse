@@ -41,7 +41,26 @@ private data class IptvSource(val id: Long, val name: String, val link: String, 
 }
 
 /** What the screen may know about a source: never the link itself. */
-data class SourceInfo(val id: Long, val name: String, val isFile: Boolean, val plainHttp: Boolean)
+data class SourceInfo(val id: Long, val name: String, val isFile: Boolean, val plainHttp: Boolean, val preset: Boolean = false)
+
+/**
+ * Free, public, no-login playlists built into the app (https only, nothing secret).
+ * Fixed negative ids so they never clash with saved sources.
+ */
+object IptvPresets {
+    data class Preset(val id: Long, val name: String, val url: String)
+    val all = listOf(
+        Preset(-101, "Free · US", "https://iptv-org.github.io/iptv/countries/us.m3u"),
+        Preset(-102, "Free · By category", "https://iptv-org.github.io/iptv/index.category.m3u"),
+        Preset(-103, "Free · Worldwide", "https://iptv-org.github.io/iptv/index.m3u"),
+        Preset(-104, "Free-TV", "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8"),
+        Preset(-105, "Pluto TV US", "https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/main/playlists/plutotv_us.m3u"),
+        Preset(-106, "Samsung TV Plus US", "https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/main/playlists/samsungtvplus_us.m3u")
+    )
+
+    private val adult = Regex("(?i)(^|[^a-z])(xxx|adult|porn|18\\+)([^a-z]|$)")
+    fun isAdultGroup(group: String) = adult.containsMatchIn(group)
+}
 
 data class IptvUi(
     val sources: List<SourceInfo> = emptyList(),
@@ -62,6 +81,9 @@ data class IptvUi(
     val playError: String? = null,
     /** Text shared or opened from another app, waiting for the listener to confirm the import. Memory only. */
     val pendingImport: PendingImport? = null,
+    /** Adult groups (e.g. XXX in the worldwide list) are hidden unless switched on. */
+    val showAdult: Boolean = false,
+    val hiddenAdult: Int = 0,
     val notice: String? = null
 )
 
@@ -108,10 +130,21 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
             })
         }
 
+    private val settings = app.getSharedPreferences("audioverse_iptv_settings", android.content.Context.MODE_PRIVATE)
+    private val presetSources = IptvPresets.all.map { IptvSource(it.id, it.name, it.url, isFile = false) }
+    private fun allSources() = sources + presetSources
+
     init {
         sources = readSources()
+        _ui.update { it.copy(showAdult = settings.getBoolean("show_adult", false)) }
         publishSources()
         sources.firstOrNull()?.let { select(it.id) }
+    }
+
+    fun setShowAdult(on: Boolean) {
+        settings.edit().putBoolean("show_adult", on).apply()
+        _ui.update { it.copy(showAdult = on) }
+        reload()
     }
 
     // ---------------- Sources ----------------
@@ -131,7 +164,8 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun publishSources() = _ui.update { s ->
-        s.copy(sources = sources.map { SourceInfo(it.id, it.name, it.isFile || it.inline, !it.isFile && !it.inline && M3uParser.isPlainHttp(it.link)) })
+        s.copy(sources = sources.map { SourceInfo(it.id, it.name, it.isFile || it.inline, !it.isFile && !it.inline && M3uParser.isPlainHttp(it.link)) } +
+            presetSources.map { SourceInfo(it.id, it.name, isFile = false, plainHttp = false, preset = true) })
     }
 
     /** Returns an error to show, or null when saved. The link is never echoed back. */
@@ -242,6 +276,7 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun remove(id: Long) {
+        if (id < 0) return // built-in free lists
         sources.firstOrNull { it.id == id }?.takeIf { it.isFile }?.let {
             try { ctx.contentResolver.releasePersistableUriPermission(Uri.parse(it.link), Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) { }
         }
@@ -259,7 +294,7 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- Loading ----------------
 
     fun select(id: Long) {
-        val src = sources.firstOrNull { it.id == id } ?: return
+        val src = allSources().firstOrNull { it.id == id } ?: return
         loadJob?.cancel()
         _ui.update { it.copy(selectedId = id, loading = true, error = null, group = null, query = "") }
         loadJob = viewModelScope.launch {
@@ -276,12 +311,15 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
                 _ui.update { it.copy(loading = false, error = describe(e)) }
                 return@launch
             }
-            channels = result.channels
+            val showAdult = _ui.value.showAdult
+            val kept = if (showAdult) result.channels else result.channels.filterNot { IptvPresets.isAdultGroup(it.group) }
+            channels = kept
             _ui.update {
                 it.copy(
-                    loading = false, total = result.channels.size, truncated = result.truncated, skipped = result.skipped,
-                    groups = M3uParser.groups(result.channels),
-                    error = if (result.channels.isEmpty()) "No channels found in this playlist" else null
+                    hiddenAdult = result.channels.size - kept.size,
+                    loading = false, total = kept.size, truncated = result.truncated, skipped = result.skipped,
+                    groups = M3uParser.groups(kept),
+                    error = if (kept.isEmpty()) "No channels found in this playlist" else null
                 )
             }
             refilter()

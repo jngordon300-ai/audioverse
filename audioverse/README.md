@@ -6,7 +6,7 @@ Personal audiophile and DJ platform for Android (Samsung Galaxy S26 Ultra + Gala
 
 Architecture: *AudioVerse — Architecture Plan v1.2* (claude.ai doc). Engine: AndroidX Media3, with libVLC as a fallback backend later on.
 
-## Current build: v0.7.0-alpha (USB drives, M3U lists, default player); v0.6.0 added DJ; v0.5.0 added IPTV; v0.4.0-alpha — AudioVerse + Transmission Across the Diaspora
+## Current build: v0.8.0-alpha (free TV lists, Onn / Google TV, browser edition in `web/`); v0.7.0 added USB drives, M3U lists, default player; v0.6.0 added DJ; v0.5.0 added IPTV; v0.4.0-alpha — AudioVerse + Transmission Across the Diaspora
 
 One app for the phone's music and live radio, plus video:
 
@@ -17,6 +17,8 @@ One app for the phone's music and live radio, plus video:
 | **Open with AudioVerse** | v0.7: AudioVerse appears in "Open with" for music (MP3, FLAC, Opus, M4A…), video (MP4, MKV, WebM…) and M3U files. Pick **Always** to make it the default player. Music plays right away, videos open in Watch, M3U files go to Video → TV after you confirm. Share text with IPTV links to AudioVerse to import them. |
 | **Radio** | The Transmission catalog (`app/src/main/assets/stations.json`, 166 entries, 75 live streams). Category chips (Featured, Philly, Hip-Hop, R&B, Gospel, Jazz, Talk, HBCU, Afrobeats, Amapiano, Reggae, UK, Podcasts, SiriusXM…), search and Shuffle. Live streams play in the AudioVerse engine, so the EQ, limiter, lock screen and Buds controls apply; next / previous move to the next station. Song titles from the stream (ICY) show in the app and on the lock screen. Podcasts, SiriusXM and other platforms open in their own app. |
 | **Playing** | Now playing. Live stations show LIVE and the current song title instead of a seek bar. ♥ Favorite and + Playlist. |
+| **Free TV lists** | v0.8: six no-login playlists built into Video → TV (IPTV-Org US / by category / worldwide, Free-TV, Pluto TV US, Samsung TV Plus US). Unofficial, community-run; some channels will be offline. Adult groups (XXX) hidden unless you tap Show. |
+| **Onn / Google TV** | v0.8: the same APK installs on Android TV / Google TV boxes (Onn 4K, Onn 4K Pro), appears on the TV home screen with a banner, and works with the remote's D-pad and play/pause. Touch-only bits (the control wheel) aren't needed on TV. |
 | **TV imports** | v0.7: in Video → TV → Add, **Paste a list** takes M3U text or one link per line ("Name, link" allowed): provider playlist links (get.php, .m3u) are saved one by one, single stream links become one channel list. **Pick file** also takes a .txt of links. |
 | **DJ** | v0.6: two decks (A / B) and a crossfader. Load phone songs (MP3, FLAC, lossless), playlist entries or live stations on either deck. Play, Cue, ±5 s nudge, tempo ±8 % with pitch kept, per-deck level. Crossfader with centre detent and three curves (Smooth blend, Linear, Scratch cut); Fade to A / Fade to B blends automatically over 4–32 s and stops the deck that faded out. Each deck runs its own copy of your Sound settings (ReplayGain levels the two songs) with a lowered limiter ceiling so the mix can't clip. Screen stays on while a deck plays. |
 | **Video** | **Watch**: Music TV channels (YouTube no-cookie embed of each channel's uploads, full screen supported) and a player for any video you pick from the phone. **Edit**: the existing cut editor (Mark start / End, export segments to Movies/AudioVerse). "Cut it ›" moves from Watch to Edit at the same spot. |
