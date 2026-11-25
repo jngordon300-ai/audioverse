@@ -14,8 +14,15 @@ data class Track(
     val artist: String,
     val album: String,
     val durationMs: Long,
-    val trackNumber: Int
-)
+    val trackNumber: Int,
+    /** true for an internet radio station (no duration, no album art). */
+    val live: Boolean = false,
+    /** Where it lives: "Music/Big Daddy Kane", "USB / SD · Music/…", "Home server". */
+    val folder: String = ""
+) {
+    fun matches(q: String): Boolean = q.isEmpty() ||
+        title.contains(q, true) || artist.contains(q, true) || album.contains(q, true) || folder.contains(q, true)
+}
 
 /**
  * Reads the phone's music library through MediaStore (audio files only).
@@ -32,7 +39,8 @@ object LocalLibrary {
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.TRACK
+            MediaStore.Audio.Media.TRACK,
+            MediaStore.Audio.Media.RELATIVE_PATH
         )
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
         val order = "${MediaStore.Audio.Media.ARTIST} COLLATE NOCASE, ${MediaStore.Audio.Media.ALBUM} COLLATE NOCASE, ${MediaStore.Audio.Media.TRACK}"
@@ -44,6 +52,7 @@ object LocalLibrary {
             val albumCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val durCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val trackCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
+            val pathCol = c.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH)
             while (c.moveToNext()) {
                 val id = c.getLong(idCol)
                 out += Track(
@@ -53,7 +62,8 @@ object LocalLibrary {
                     artist = c.getString(artistCol)?.takeUnless { it == "<unknown>" } ?: "Unknown artist",
                     album = c.getString(albumCol) ?: "",
                     durationMs = c.getLong(durCol),
-                    trackNumber = c.getInt(trackCol) % 1000
+                    trackNumber = c.getInt(trackCol) % 1000,
+                    folder = (if (pathCol >= 0) c.getString(pathCol) else null)?.trimEnd('/').orEmpty()
                 )
             }
         }
