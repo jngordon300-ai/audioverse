@@ -86,7 +86,7 @@ fun VideoScreen(vm: VideoEditorViewModel) {
         item {
             Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Video", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AV.Text)
+                    Text("Edit", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AV.Text)
                     Text(if (s.uri == null) "Play and cut long videos" else s.title, color = AV.TextMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 OutlinedButton(onClick = { pick.launch(arrayOf("video/*")) }) { Text(if (s.uri == null) "Open" else "Open other", color = AV.Amber) }
@@ -121,6 +121,7 @@ fun VideoScreen(vm: VideoEditorViewModel) {
                     }
                 },
                 update = { it.player = vm.player },
+                onRelease = { it.player = null },
                 modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)).background(Color.Black)
             )
         }

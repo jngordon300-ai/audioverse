@@ -1,0 +1,1348 @@
+{
+ "featured": [
+  "Power 99 (WUSL) — Philly",
+  "WDAS 105.3 — Philly",
+  "WURD — Philly",
+  "Hot 97 (WQHT)",
+  "WBLS 107.5",
+  "The Breakfast Club",
+  "COLORS",
+  "WCLK 91.9 Jazz",
+  "Ch 45 · Shade 45",
+  "LagosJump Radio",
+  "KMOJ 89.9",
+  "Million Dollaz Worth of Game"
+ ],
+ "stations": [
+  {
+   "name": "V-103 Atlanta (WVEE)",
+   "city": "Atlanta, GA",
+   "tags": "hip hop · r&b · Audacy",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://live.amperwave.net/direct/audacy-wveefmaac-imc"
+  },
+  {
+   "name": "Power 105.1",
+   "city": "New York, NY",
+   "tags": "hip hop · top 40",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://stream.revma.ihrhls.com/zc1481"
+  },
+  {
+   "name": "Hot 97 (WQHT)",
+   "city": "New York, NY",
+   "tags": "hip hop · the flagship",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WQHTFMAAC.aac"
+  },
+  {
+   "name": "Hot 107.9 ATL (WHTA)",
+   "city": "Atlanta, GA",
+   "tags": "hip hop · trap",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WHTAFMAAC.aac"
+  },
+  {
+   "name": "Real 92.3 LA",
+   "city": "Los Angeles, CA",
+   "tags": "hip hop · r&b",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://stream.revma.ihrhls.com/zc181"
+  },
+  {
+   "name": "Power 106 (KPWR)",
+   "city": "Los Angeles, CA",
+   "tags": "hip hop · west coast",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://stream.revma.ihrhls.com/zc185"
+  },
+  {
+   "name": "WGCI 107.5",
+   "city": "Chicago, IL",
+   "tags": "hip hop · r&b",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://stream.revma.ihrhls.com/zc841"
+  },
+  {
+   "name": "100.3 The Beat",
+   "city": "Detroit, MI",
+   "tags": "classic hip hop · r&b",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://stream.revma.ihrhls.com/zc1141"
+  },
+  {
+   "name": "Power 99 (WUSL)",
+   "city": "Philadelphia, PA",
+   "tags": "hip hop · top 40 · philly",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://stream.revma.ihrhls.com/zc2009"
+  },
+  {
+   "name": "97.9 The Box",
+   "city": "Houston, TX",
+   "tags": "hip hop · southern",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/KBXXFMAAC.aac"
+  },
+  {
+   "name": "93.9 WKYS",
+   "city": "Washington, DC",
+   "tags": "hip hop · r&b",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WKYSFMAAC.aac"
+  },
+  {
+   "name": "Hot 96.3",
+   "city": "Indianapolis, IN",
+   "tags": "hip hop · r&b",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WHHHFMAAC.aac"
+  },
+  {
+   "name": "Wild 94.1",
+   "city": "Tampa, FL",
+   "tags": "hip hop · r&b",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WLLDFMAAC.aac"
+  },
+  {
+   "name": "105.9 Kiss-FM",
+   "city": "Detroit, MI",
+   "tags": "old school hip hop · r&b",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WDMKFMAAC.aac"
+  },
+  {
+   "name": "Power 98",
+   "city": "Charlotte, NC",
+   "tags": "hip hop · r&b",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WPEGFMAAC.aac"
+  },
+  {
+   "name": "Z107.9",
+   "city": "Cleveland, OH",
+   "tags": "r&b · hip hop",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WENZFMAAC.aac"
+  },
+  {
+   "name": "92Q Jams",
+   "city": "Baltimore, MD",
+   "tags": "r&b · hip hop",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WERQFMAAC.aac"
+  },
+  {
+   "name": "K97 Memphis (WHRK)",
+   "city": "Memphis, TN",
+   "tags": "hip hop · trap · southern",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://stream.revma.ihrhls.com/zc2141"
+  },
+  {
+   "name": "K-104 Dallas (KKDA)",
+   "city": "Dallas, TX",
+   "tags": "hip hop · texas rap",
+   "cat": "hiphop",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/KKDAFMAAC.aac"
+  },
+  {
+   "name": "WBLS 107.5",
+   "city": "New York, NY",
+   "tags": "r&b · classic soul",
+   "cat": "rnb",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WBLSFMAAC.aac"
+  },
+  {
+   "name": "WHUR 96.3",
+   "city": "Washington, DC",
+   "tags": "r&b · soul · Howard U",
+   "cat": "rnb",
+   "type": "audio",
+   "url": "https://futuri-das.cdnstream1.com/7167_48k.aac"
+  },
+  {
+   "name": "WDAS 105.3",
+   "city": "Philadelphia, PA",
+   "tags": "r&b · classics · philly",
+   "cat": "rnb",
+   "type": "audio",
+   "url": "https://stream.revma.ihrhls.com/zc1993"
+  },
+  {
+   "name": "Magic 102.3",
+   "city": "Washington, DC",
+   "tags": "r&b · old school",
+   "cat": "rnb",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WMMJFMAAC.aac"
+  },
+  {
+   "name": "Majic 102.1",
+   "city": "Houston, TX",
+   "tags": "r&b · adult contemporary",
+   "cat": "rnb",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/KMJQFMAAC.aac"
+  },
+  {
+   "name": "WBGO Jazz 88.3",
+   "city": "Newark, NJ",
+   "tags": "jazz · Black music heritage",
+   "cat": "jazz",
+   "type": "audio",
+   "url": "https://ais-sa8.cdnstream1.com/3629_128.mp3"
+  },
+  {
+   "name": "WWOZ 90.7",
+   "city": "New Orleans, LA",
+   "tags": "jazz · soul · NOLA heritage",
+   "cat": "jazz",
+   "type": "audio",
+   "url": "https://wwoz-sc.streamguys1.com/wwoz-hi.mp3"
+  },
+  {
+   "name": "KEXP 90.3",
+   "city": "Seattle, WA",
+   "tags": "indie · soul · public",
+   "cat": "jazz",
+   "type": "audio",
+   "url": "https://kexp.streamguys1.com/kexp160.aac"
+  },
+  {
+   "name": "KCRW",
+   "city": "Santa Monica, CA",
+   "tags": "eclectic · culture · public",
+   "cat": "jazz",
+   "type": "audio",
+   "url": "https://streams.kcrw.com/e24_mp3"
+  },
+  {
+   "name": "SomaFM Groove Salad",
+   "city": "Internet · SF",
+   "tags": "downtempo · ambient · player",
+   "cat": "jazz",
+   "type": "link",
+   "url": "https://somafm.com/groovesalad/"
+  },
+  {
+   "name": "SomaFM Secret Agent",
+   "city": "Internet · SF",
+   "tags": "lounge · jazz · spy · player",
+   "cat": "jazz",
+   "type": "link",
+   "url": "https://somafm.com/secretagent/"
+  },
+  {
+   "name": "SomaFM Fluid",
+   "city": "Internet · SF",
+   "tags": "hip hop · jazz · instrumental · player",
+   "cat": "jazz",
+   "type": "link",
+   "url": "https://somafm.com/fluid/"
+  },
+  {
+   "name": "SomaFM Lush",
+   "city": "Internet · SF",
+   "tags": "sensuous vocals · downtempo · player",
+   "cat": "jazz",
+   "type": "link",
+   "url": "https://somafm.com/lush/"
+  },
+  {
+   "name": "SomaFM Heavyweight Reggae",
+   "city": "Internet · SF",
+   "tags": "reggae · roots · dub · player",
+   "cat": "jazz",
+   "type": "link",
+   "url": "https://somafm.com/reggae/"
+  },
+  {
+   "name": "Praise 102.5",
+   "city": "Atlanta, GA",
+   "tags": "gospel · inspirational",
+   "cat": "gospel",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WPZEFMAAC.aac"
+  },
+  {
+   "name": "Praise 104.1",
+   "city": "Washington, DC",
+   "tags": "gospel",
+   "cat": "gospel",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WPRSFMAAC.aac"
+  },
+  {
+   "name": "WURD 96.1/900",
+   "city": "Philadelphia, PA",
+   "tags": "Black talk · Black-owned · philly",
+   "cat": "talk",
+   "type": "audio",
+   "url": "https://wurd.streamguys1.com/live"
+  },
+  {
+   "name": "WOL 1450",
+   "city": "Washington, DC",
+   "tags": "Black talk · Reach Media",
+   "cat": "talk",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WOLAMAAC.aac"
+  },
+  {
+   "name": "NPR News 24/7",
+   "city": "National",
+   "tags": "news · public",
+   "cat": "talk",
+   "type": "audio",
+   "url": "https://npr-ice.streamguys1.com/live.mp3"
+  },
+  {
+   "name": "BBC World Service",
+   "city": "London, UK",
+   "tags": "world news · talk",
+   "cat": "talk",
+   "type": "audio",
+   "url": "https://stream.live.vc.bbcmedia.co.uk/bbc_world_service"
+  },
+  {
+   "name": "97.5 The Fanatic",
+   "city": "Philadelphia, PA",
+   "tags": "sports · Eagles · Phillies · 76ers · Flyers",
+   "cat": "philly",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WPENFMAAC.aac"
+  },
+  {
+   "name": "93.3 WMMR",
+   "city": "Philadelphia, PA",
+   "tags": "rock · Preston & Steve",
+   "cat": "philly",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WMMRFMAAC.aac"
+  },
+  {
+   "name": "Power 99 (WUSL) — Philly",
+   "city": "Philadelphia, PA",
+   "tags": "hip hop · top 40",
+   "cat": "philly",
+   "type": "audio",
+   "url": "https://stream.revma.ihrhls.com/zc2009"
+  },
+  {
+   "name": "WDAS 105.3 — Philly",
+   "city": "Philadelphia, PA",
+   "tags": "r&b · classics",
+   "cat": "philly",
+   "type": "audio",
+   "url": "https://stream.revma.ihrhls.com/zc1993"
+  },
+  {
+   "name": "WURD — Philly",
+   "city": "Philadelphia, PA",
+   "tags": "Black talk · Black-owned",
+   "cat": "philly",
+   "type": "audio",
+   "url": "https://wurd.streamguys1.com/live"
+  },
+  {
+   "name": "100.3 R&B Philly (WRNB)",
+   "city": "Philadelphia, PA",
+   "tags": "r&b · hip hop · Urban One",
+   "cat": "philly",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WRNBFMAAC.aac"
+  },
+  {
+   "name": "Classix 107.9 (WPPZ)",
+   "city": "Philadelphia, PA",
+   "tags": "old school · r&b · classics",
+   "cat": "philly",
+   "type": "audio",
+   "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/WPPZFMAAC.aac"
+  },
+  {
+   "name": "The Bet Philadelphia",
+   "city": "Philadelphia, PA",
+   "tags": "hip hop · r&b · Audacy",
+   "cat": "philly",
+   "type": "audio",
+   "url": "https://live.amperwave.net/direct/audacy-wfanhd2aac-imc"
+  },
+  {
+   "name": "Q102 (WIOQ)",
+   "city": "Philadelphia, PA",
+   "tags": "top 40 · pop · hits",
+   "cat": "philly",
+   "type": "audio",
+   "url": "https://stream.revma.ihrhls.com/zc1997"
+  },
+  {
+   "name": "93.7 WSTW",
+   "city": "Wilmington, DE",
+   "tags": "hot AC · pop · Delaware",
+   "cat": "philly",
+   "type": "link",
+   "url": "https://wstw.com/listen/"
+  },
+  {
+   "name": "PHLY Sports (YouTube)",
+   "city": "Philadelphia, PA",
+   "tags": "sports · Eagles · Sixers · Phillies",
+   "cat": "philly",
+   "type": "link",
+   "url": "https://www.youtube.com/@PHLYsports/streams"
+  },
+  {
+   "name": "94 WIP Sports Radio",
+   "city": "Philadelphia, PA",
+   "tags": "sports · Eagles · Phillies · Sixers · Flyers",
+   "cat": "philly",
+   "type": "audio",
+   "url": "https://live.amperwave.net/direct/audacy-wipfmaac-imc"
+  },
+  {
+   "name": "97.5 The Fanatic (YouTube)",
+   "city": "Philadelphia, PA",
+   "tags": "sports talk · clips · shows",
+   "cat": "philly",
+   "type": "link",
+   "url": "https://www.youtube.com/@975TheFanatic/streams"
+  },
+  {
+   "name": "NBC Sports Philadelphia",
+   "city": "Philadelphia, PA",
+   "tags": "local sports · all four teams",
+   "cat": "philly",
+   "type": "link",
+   "url": "https://www.youtube.com/@NBCSPhilly"
+  },
+  {
+   "name": "Bleeding Green Nation",
+   "city": "Philadelphia, PA",
+   "tags": "Eagles community · podcast",
+   "cat": "philly",
+   "type": "link",
+   "url": "https://www.youtube.com/@bleedinggreennation"
+  },
+  {
+   "name": "Irie FM Jamaica",
+   "city": "Ocho Rios, JM",
+   "tags": "reggae · roots · dancehall",
+   "cat": "diaspora-reggae",
+   "type": "audio",
+   "url": "https://usa19.fastcast4u.com:7430/;"
+  },
+  {
+   "name": "Zip FM 103",
+   "city": "Kingston, JM",
+   "tags": "dancehall · reggae",
+   "cat": "diaspora-reggae",
+   "type": "audio",
+   "url": "https://stream.zeno.fm/c0ytcn43vxquv"
+  },
+  {
+   "name": "Stylz FM",
+   "city": "Jamaica",
+   "tags": "reggae · dancehall",
+   "cat": "diaspora-reggae",
+   "type": "audio",
+   "url": "https://stream.zeno.fm/0d1hpcmqqy5tv"
+  },
+  {
+   "name": "LagosJump Radio",
+   "city": "Lagos, NG",
+   "tags": "afrobeats · naija",
+   "cat": "diaspora-afrobeats",
+   "type": "audio",
+   "url": "https://radio.lagosjumpradio.com/listen/lagosjump_radio/radio.mp3"
+  },
+  {
+   "name": "Bond 92.9 FM",
+   "city": "Nigeria",
+   "tags": "afrobeats · talk",
+   "cat": "diaspora-afrobeats",
+   "type": "audio",
+   "url": "https://go.webgateready.com/bondfm"
+  },
+  {
+   "name": "Splash FM 105.5",
+   "city": "Ibadan, NG",
+   "tags": "afrobeats · highlife",
+   "cat": "diaspora-afrobeats",
+   "type": "audio",
+   "url": "https://edge.mixlr.com/channel/cfeki"
+  },
+  {
+   "name": "Amapiano Radio",
+   "city": "South Africa",
+   "tags": "amapiano · log drum",
+   "cat": "diaspora-amapiano",
+   "type": "audio",
+   "url": "https://stream.zeno.fm/xs6zeac1ts8uv"
+  },
+  {
+   "name": "Afro House Radio",
+   "city": "Global",
+   "tags": "afro tech · deep house",
+   "cat": "diaspora-amapiano",
+   "type": "audio",
+   "url": "https://0nlineradio.radioho.st/technolovers-afro-house"
+  },
+  {
+   "name": "Smooth Soul UK",
+   "city": "UK",
+   "tags": "soul · classics · adult",
+   "cat": "diaspora-uk",
+   "type": "audio",
+   "url": "https://media-ice.musicradio.com/SmoothSoulMP3"
+  },
+  {
+   "name": "Jazz Funk Soul Radio",
+   "city": "UK",
+   "tags": "jazz · funk · soul",
+   "cat": "diaspora-uk",
+   "type": "audio",
+   "url": "https://s2.radio.co/s22ae5a8a6/listen"
+  },
+  {
+   "name": "House FM UK",
+   "city": "UK",
+   "tags": "soulful house",
+   "cat": "diaspora-uk",
+   "type": "audio",
+   "url": "https://uksoutha.streaming.broadcast.radio:19920/housefm"
+  },
+  {
+   "name": "BBC 1Xtra (YT)",
+   "city": "London, UK",
+   "tags": "UK Black music · grime · garage",
+   "cat": "diaspora-uk",
+   "type": "link",
+   "url": "https://www.youtube.com/@BBCRadio1Xtra"
+  },
+  {
+   "name": "The Breakfast Club",
+   "city": "Power 105.1 NYC",
+   "tags": "Charlamagne · DJ Envy · Jess Hilarious",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/@breakfastclubpowerfm1051"
+  },
+  {
+   "name": "Rickey Smiley Morning Show",
+   "city": "National",
+   "tags": "comedy · culture · syndicated",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/@RickeySmileyMorningShow"
+  },
+  {
+   "name": "The Morning Hustle",
+   "city": "National",
+   "tags": "Lore'l · Headkrack · hip hop · talk",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/@TheMorningHustleShow"
+  },
+  {
+   "name": "Russ Parr Morning Show",
+   "city": "National",
+   "tags": "news · comedy · interviews",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/@russparrmorningshow"
+  },
+  {
+   "name": "Grits N Eggs Breakfast Club",
+   "city": "Atlanta, GA",
+   "tags": "comedy · sports · culture",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/@gritsneggs"
+  },
+  {
+   "name": "D.L. Hughley Show",
+   "city": "National",
+   "tags": "politics · comedy · syndicated",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/@TheDLHughleyShow"
+  },
+  {
+   "name": "Steve Harvey Morning Show",
+   "city": "National",
+   "tags": "inspiration · comedy · syndicated",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/@SteveHarveyMorningShow"
+  },
+  {
+   "name": "Get Up! Mornings w/ Erica Campbell",
+   "city": "National",
+   "tags": "gospel · inspiration · Griff",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/@getuperica"
+  },
+  {
+   "name": "The Willie Moore Jr. Show",
+   "city": "National",
+   "tags": "gospel · faith · family",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/results?search_query=Willie%20Moore%20Jr%20Show"
+  },
+  {
+   "name": "The Ed Lover Show",
+   "city": "National",
+   "tags": "hip hop · classic · comedy",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/results?search_query=Ed%20Lover%20Show"
+  },
+  {
+   "name": "The Karen Hunter Show",
+   "city": "SiriusXM Urban View",
+   "tags": "news · politics · culture",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/@KarenHunterShow"
+  },
+  {
+   "name": "Way Up With Angela Yee",
+   "city": "National",
+   "tags": "Angela Yee · culture · interviews",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/@WayUpWithAngelaYee"
+  },
+  {
+   "name": "The Breakfast Club (Clips)",
+   "city": "Power 105.1",
+   "tags": "interviews · viral moments",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/@BreakfastClubClips"
+  },
+  {
+   "name": "Big Boy's Neighborhood",
+   "city": "Real 92.3 LA",
+   "tags": "hip hop · west coast · interviews",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/results?search_query=Big%20Boys%20Neighborhood"
+  },
+  {
+   "name": "The Nightly Spirit w/ Darlene McCoy",
+   "city": "National",
+   "tags": "gospel · inspiration",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/results?search_query=Nightly%20Spirit%20Darlene%20McCoy"
+  },
+  {
+   "name": "The Ricky Bell Morning Show",
+   "city": "Regional",
+   "tags": "r&b · classics · morning drive",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/results?search_query=Ricky%20Bell%20Morning%20Show%20radio"
+  },
+  {
+   "name": "Frank Ski & Nina Brown",
+   "city": "Atlanta",
+   "tags": "Atlanta mornings · culture",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/results?search_query=Frank%20Ski%20Nina%20Brown%20show"
+  },
+  {
+   "name": "The Quicksilva Show",
+   "city": "DC/Baltimore",
+   "tags": "DMV mornings · hip hop",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/results?search_query=Quicksilva%20Show%20Morning"
+  },
+  {
+   "name": "Reverend Al Sharpton Show",
+   "city": "National",
+   "tags": "politics · civil rights · talk",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/results?search_query=Keepin%20It%20Real%20Al%20Sharpton"
+  },
+  {
+   "name": "Tha Fly Morning Rush",
+   "city": "Regional",
+   "tags": "hip hop · r&b · morning drive",
+   "cat": "morning",
+   "type": "link",
+   "url": "https://www.youtube.com/results?search_query=Fly%20Morning%20Rush%20radio"
+  },
+  {
+   "name": "Joe Budden Podcast",
+   "city": "Podcast",
+   "tags": "hip-hop culture · debate",
+   "cat": "pods",
+   "type": "spotify",
+   "url": "https://open.spotify.com/show/7G8X3uikqwAmvr92MHFZO6"
+  },
+  {
+   "name": "Million Dollaz Worth of Game",
+   "city": "Philadelphia, PA",
+   "tags": "Wallo & Gillie Da Kid · Philly to the world",
+   "cat": "pods",
+   "type": "spotify",
+   "url": "https://open.spotify.com/show/2pBM5JEmMJ4DE7xddtXdZm"
+  },
+  {
+   "name": "Drink Champs",
+   "city": "Podcast",
+   "tags": "N.O.R.E. & DJ EFN · hip hop history",
+   "cat": "pods",
+   "type": "spotify",
+   "url": "https://open.spotify.com/show/1CtRqrNGqpAttWyft6nVss"
+  },
+  {
+   "name": "Club Shay Shay",
+   "city": "Podcast",
+   "tags": "Shannon Sharpe · sports + culture",
+   "cat": "pods",
+   "type": "spotify",
+   "url": "https://open.spotify.com/show/060hDdnydsJyMi17TmvyAh"
+  },
+  {
+   "name": "Roland Martin Unfiltered",
+   "city": "National",
+   "tags": "daily Black news + politics",
+   "cat": "pods",
+   "type": "spotify",
+   "url": "https://open.spotify.com/show/7Kr2J8PM8AOVDnm1Uwvy4c"
+  },
+  {
+   "name": "The Brilliant Idiots",
+   "city": "Podcast",
+   "tags": "Charlamagne & Andrew Schulz · comedy",
+   "cat": "pods",
+   "type": "spotify",
+   "url": "https://open.spotify.com/show/63SCSYF3vNyGpv1SwhNyhW"
+  },
+  {
+   "name": "Earn Your Leisure",
+   "city": "Podcast",
+   "tags": "business · investing · Black wealth",
+   "cat": "pods",
+   "type": "spotify",
+   "url": "https://open.spotify.com/show/2S4tSSlT71Z5i8Dt1vlDJc"
+  },
+  {
+   "name": "All The Smoke",
+   "city": "Podcast",
+   "tags": "Matt Barnes & Stephen Jackson · NBA culture",
+   "cat": "pods",
+   "type": "spotify",
+   "url": "https://open.spotify.com/show/3Cdge5G5apw1LsC8jGcl4j"
+  },
+  {
+   "name": "85 South Show",
+   "city": "Atlanta, GA",
+   "tags": "DC Young Fly · Karlous · Chico · comedy",
+   "cat": "pods",
+   "type": "spotify",
+   "url": "https://open.spotify.com/show/7ohkV2D7vX8ISlHdwN7lPB"
+  },
+  {
+   "name": "The Read",
+   "city": "Podcast",
+   "tags": "Kid Fury & Crissle · Black culture",
+   "cat": "pods",
+   "type": "spotify",
+   "url": "https://open.spotify.com/show/1YZW7v12Ty11OSJ2hoIXtG"
+  },
+  {
+   "name": "The Black Effect Network",
+   "city": "Charlamagne's network",
+   "tags": "culture · politics · podcasts",
+   "cat": "pods",
+   "type": "link",
+   "url": "https://www.youtube.com/@TheBlackEffect"
+  },
+  {
+   "name": "Code Switch (NPR)",
+   "city": "National",
+   "tags": "race · identity · culture",
+   "cat": "pods",
+   "type": "link",
+   "url": "https://www.youtube.com/playlist?list=PLp-wXwmb1yVr7lR2nZbEK4wK7JvHWpn9N"
+  },
+  {
+   "name": "WWE",
+   "city": "WWE",
+   "tags": "Raw · SmackDown · NXT · clips",
+   "cat": "wrestling",
+   "type": "link",
+   "url": "https://www.youtube.com/@WWE"
+  },
+  {
+   "name": "AEW",
+   "city": "AEW",
+   "tags": "Dynamite · Collision · Rampage",
+   "cat": "wrestling",
+   "type": "link",
+   "url": "https://www.youtube.com/@AEW"
+  },
+  {
+   "name": "My Mom's Basement",
+   "city": "Barstool",
+   "tags": "Robbie Fox · wrestling pod",
+   "cat": "wrestling",
+   "type": "link",
+   "url": "https://www.youtube.com/@MyMomsBasement"
+  },
+  {
+   "name": "Wrestling Observer",
+   "city": "News",
+   "tags": "Dave Meltzer · news + analysis",
+   "cat": "wrestling",
+   "type": "link",
+   "url": "https://www.youtube.com/@WrestlingObserverLive"
+  },
+  {
+   "name": "Comedy Hype",
+   "city": "YouTube",
+   "tags": "Black comedy · stand-up · interviews",
+   "cat": "comedy",
+   "type": "link",
+   "url": "https://www.youtube.com/@ComedyHype"
+  },
+  {
+   "name": "Kountry Wayne",
+   "city": "YouTube",
+   "tags": "skit comedy · family · faith",
+   "cat": "comedy",
+   "type": "link",
+   "url": "https://www.youtube.com/@KountryWayne"
+  },
+  {
+   "name": "DC Young Fly",
+   "city": "YouTube",
+   "tags": "improv · roasts · 85 South",
+   "cat": "comedy",
+   "type": "link",
+   "url": "https://www.youtube.com/@CallMeDCYoungFly"
+  },
+  {
+   "name": "Ch 126 · Urban View",
+   "city": "SiriusXM",
+   "tags": "Black talk · politics · Karen Hunter",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/126"
+  },
+  {
+   "name": "Ch 43 · Rock The Bells",
+   "city": "SiriusXM",
+   "tags": "LL Cool J · classic hip-hop",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/43"
+  },
+  {
+   "name": "Ch 44 · Hip-Hop Nation",
+   "city": "SiriusXM",
+   "tags": "hip-hop hits · explicit",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/44"
+  },
+  {
+   "name": "Ch 45 · Shade 45",
+   "city": "SiriusXM",
+   "tags": "Eminem · Sway in the Morning",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/45"
+  },
+  {
+   "name": "Ch 46 · The Heat",
+   "city": "SiriusXM",
+   "tags": "hot R&B and hip-hop",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/46"
+  },
+  {
+   "name": "Ch 47 · Heart & Soul",
+   "city": "SiriusXM",
+   "tags": "adult R&B hits",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/47"
+  },
+  {
+   "name": "Ch 48 · The Flow",
+   "city": "SiriusXM",
+   "tags": "R&B hits from the 2000s",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/48"
+  },
+  {
+   "name": "Ch 49 · Flex2K",
+   "city": "SiriusXM",
+   "tags": "hip hop hits from the 2000s",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/49"
+  },
+  {
+   "name": "Ch 50 · SiriusXM FLY",
+   "city": "SiriusXM",
+   "tags": "90s–2000s hip-hop / R&B",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/50"
+  },
+  {
+   "name": "Ch 51 · The Groove",
+   "city": "SiriusXM",
+   "tags": "70s–90s old school R&B · funk",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/51"
+  },
+  {
+   "name": "Ch 74 · Smokey's Soul Town",
+   "city": "SiriusXM",
+   "tags": "classic R&B · hosted by Smokey",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/74"
+  },
+  {
+   "name": "Ch 77 · BB King's Bluesville",
+   "city": "SiriusXM",
+   "tags": "blues",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/77"
+  },
+  {
+   "name": "Ch 80 · Watercolors",
+   "city": "SiriusXM",
+   "tags": "smooth jazz",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/80"
+  },
+  {
+   "name": "Ch 83 · Real Jazz",
+   "city": "SiriusXM",
+   "tags": "traditional jazz",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/83"
+  },
+  {
+   "name": "Ch 86 · Spirit",
+   "city": "SiriusXM",
+   "tags": "gospel · inspiration",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/86"
+  },
+  {
+   "name": "Ch 96 · Kirk Franklin's Praise",
+   "city": "SiriusXM",
+   "tags": "gospel",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/96"
+  },
+  {
+   "name": "Ch 141 · Praise / Gospel",
+   "city": "SiriusXM",
+   "tags": "gospel",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/141"
+  },
+  {
+   "name": "Ch 142 · Gospel / Soul",
+   "city": "SiriusXM",
+   "tags": "gospel · classic soul",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/142"
+  },
+  {
+   "name": "Ch 330 · Soul Town",
+   "city": "SiriusXM",
+   "tags": "classic soul · Motown",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/330"
+  },
+  {
+   "name": "Ch 362 · SiriusXM Chill",
+   "city": "SiriusXM",
+   "tags": "downtempo · chill · lounge",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/362"
+  },
+  {
+   "name": "Ch 94 · Urban Talk",
+   "city": "SiriusXM",
+   "tags": "urban talk · culture",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/94"
+  },
+  {
+   "name": "Ch 116 · SiriusXM Progress",
+   "city": "SiriusXM",
+   "tags": "talk",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/116"
+  },
+  {
+   "name": "Ch 118 · SiriusXM Patriot",
+   "city": "SiriusXM",
+   "tags": "talk",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/118"
+  },
+  {
+   "name": "Ch 127 · SiriusXM HBCU",
+   "city": "SiriusXM",
+   "tags": "HBCU sports & culture",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/127"
+  },
+  {
+   "name": "Ch 156 · Sports Talk",
+   "city": "SiriusXM",
+   "tags": "sports talk",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/156"
+  },
+  {
+   "name": "Ch 556 · Sports / Play-by-Play",
+   "city": "SiriusXM",
+   "tags": "live sports",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/556"
+  },
+  {
+   "name": "Ch 720 · SiriusXM Sports",
+   "city": "SiriusXM",
+   "tags": "live sports",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/720"
+  },
+  {
+   "name": "Ch 723 · NBA Radio",
+   "city": "SiriusXM",
+   "tags": "NBA talk & play-by-play",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/723"
+  },
+  {
+   "name": "Ch 724 · NFL Radio",
+   "city": "SiriusXM",
+   "tags": "NFL talk & play-by-play",
+   "cat": "siriusxm",
+   "type": "link",
+   "url": "https://www.siriusxm.com/player/channel/724"
+  },
+  {
+   "name": "WKCR 89.9",
+   "city": "Columbia U · NYC",
+   "tags": "jazz · new music · Ivy",
+   "cat": "college",
+   "type": "audio",
+   "url": "https://wkcr.streamguys1.com/live"
+  },
+  {
+   "name": "WRAS 88.5 Album 88",
+   "city": "Georgia State U",
+   "tags": "indie · alternative · ATL",
+   "cat": "college",
+   "type": "audio",
+   "url": "https://26423.live.streamtheworld.com/WRASFM.mp3"
+  },
+  {
+   "name": "WXYC 89.3",
+   "city": "UNC Chapel Hill",
+   "tags": "freeform · eclectic",
+   "cat": "college",
+   "type": "audio",
+   "url": "https://audio-mp3.ibiblio.org/wxyc.mp3"
+  },
+  {
+   "name": "WNYU 89.1",
+   "city": "New York University",
+   "tags": "college · indie · NYC",
+   "cat": "college",
+   "type": "audio",
+   "url": "https://www.wnyu-ice-cast-relay.com/wnyu.mp3"
+  },
+  {
+   "name": "WRTI 90.1 Jazz",
+   "city": "Temple U · Philly",
+   "tags": "jazz · HBCU-adjacent · philly",
+   "cat": "college",
+   "type": "audio",
+   "url": "https://wrti-live.streamguys1.com/jazz-mp3"
+  },
+  {
+   "name": "WXPN 88.5",
+   "city": "U Penn · Philly",
+   "tags": "triple-A · World Cafe · philly",
+   "cat": "college",
+   "type": "audio",
+   "url": "https://wxpnhi.xpn.org/xpnhi"
+  },
+  {
+   "name": "WPRB 103.3",
+   "city": "Princeton · NJ",
+   "tags": "freeform · indie",
+   "cat": "college",
+   "type": "audio",
+   "url": "https://wprb.streamguys1.com/live"
+  },
+  {
+   "name": "WFMU 91.1",
+   "city": "Jersey City · NYC",
+   "tags": "freeform · legendary · independent",
+   "cat": "college",
+   "type": "audio",
+   "url": "https://stream0.wfmu.org/freeform-extrahigh-primary.aac"
+  },
+  {
+   "name": "WKDU 91.7 (listen page)",
+   "city": "Drexel U · Philly",
+   "tags": "freeform · indie · philly",
+   "cat": "college",
+   "type": "link",
+   "url": "https://wkdu.org/"
+  },
+  {
+   "name": "WCLK 91.9 Jazz",
+   "city": "Clark Atlanta U",
+   "tags": "jazz · HBCU · Atlanta",
+   "cat": "hbcu",
+   "type": "audio",
+   "url": "https://17803.live.streamtheworld.com/WCLKFM_SC"
+  },
+  {
+   "name": "WNCU 90.7 Jazz",
+   "city": "NC Central U · Durham",
+   "tags": "jazz · HBCU · community",
+   "cat": "hbcu",
+   "type": "audio",
+   "url": "https://wncu.streamguys1.com/live"
+  },
+  {
+   "name": "KTSU 90.9 (listen page)",
+   "city": "Texas Southern U",
+   "tags": "jazz · gospel · HBCU · Houston",
+   "cat": "hbcu",
+   "type": "link",
+   "url": "https://www.ktsufm.org/"
+  },
+  {
+   "name": "WNSB Hot 91 (listen page)",
+   "city": "Norfolk State U",
+   "tags": "urban · HBCU · Virginia",
+   "cat": "hbcu",
+   "type": "link",
+   "url": "https://wnsbonline.org/"
+  },
+  {
+   "name": "Soul Rhythms Radio UK",
+   "city": "Internet · UK",
+   "tags": "neo-soul · r&b · soulful",
+   "cat": "internet",
+   "type": "audio",
+   "url": "https://a7.asurahosting.com:8230/radio.mp3"
+  },
+  {
+   "name": "Classic Soul 107.5",
+   "city": "Internet · US",
+   "tags": "classic soul · Motown · oldies",
+   "cat": "internet",
+   "type": "audio",
+   "url": "https://hello.citrus3.com:2020/8134/stream"
+  },
+  {
+   "name": "Funk the Planet",
+   "city": "Internet · US",
+   "tags": "funk · soul · groove",
+   "cat": "internet",
+   "type": "audio",
+   "url": "https://streaming.live365.com/a01484"
+  },
+  {
+   "name": "KMOJ 89.9",
+   "city": "Minneapolis, MN",
+   "tags": "Black community · r&b · hip hop · gospel",
+   "cat": "internet",
+   "type": "audio",
+   "url": "https://kmojfm.streamguys1.com/live"
+  },
+  {
+   "name": "KMOJ HD2 · The Ice",
+   "city": "Minneapolis, MN",
+   "tags": "old school · classic hip hop · r&b",
+   "cat": "internet",
+   "type": "audio",
+   "url": "https://kmojfm.streamguys1.com/theice"
+  },
+  {
+   "name": "WHUR World (HD2)",
+   "city": "Internet · Howard U",
+   "tags": "r&b · soul · adult",
+   "cat": "internet",
+   "type": "audio",
+   "url": "https://futuri-das.cdnstream1.com/7167_48k.aac"
+  },
+  {
+   "name": "NTS Radio 1",
+   "city": "Internet · London",
+   "tags": "underground · eclectic · live sets",
+   "cat": "internet",
+   "type": "audio",
+   "url": "https://stream-relay-geo.ntslive.net/stream"
+  },
+  {
+   "name": "NTS Radio 2",
+   "city": "Internet · London",
+   "tags": "ambient · experimental · global",
+   "cat": "internet",
+   "type": "audio",
+   "url": "https://stream-relay-geo.ntslive.net/stream2"
+  },
+  {
+   "name": "Worldwide FM",
+   "city": "Internet · London",
+   "tags": "Gilles Peterson · jazz · global soul",
+   "cat": "internet",
+   "type": "audio",
+   "url": "https://worldwide-fm.radiocult.fm/stream"
+  },
+  {
+   "name": "The Lot Radio (listen page)",
+   "city": "Internet · Brooklyn",
+   "tags": "independent kiosk · live DJs",
+   "cat": "internet",
+   "type": "link",
+   "url": "https://www.thelotradio.com/"
+  },
+  {
+   "name": "Dublab (listen page)",
+   "city": "Internet · LA",
+   "tags": "forward-thinking · experimental",
+   "cat": "internet",
+   "type": "link",
+   "url": "https://www.dublab.com/"
+  },
+  {
+   "name": "COLORS",
+   "city": "YouTube · Berlin",
+   "tags": "live performances · R&B · soul · hip hop",
+   "cat": "musictv",
+   "type": "tv",
+   "url": "https://www.youtube.com/channel/UC2Qw1dzXDBAZPwS7zm37g8g",
+   "ytChannel": "UC2Qw1dzXDBAZPwS7zm37g8g"
+  },
+  {
+   "name": "WorldstarHipHop",
+   "city": "YouTube",
+   "tags": "hip hop videos · premieres · culture",
+   "cat": "musictv",
+   "type": "tv",
+   "url": "https://www.youtube.com/channel/UC-yXuc1__OzjwpsJPlxYUCQ",
+   "ytChannel": "UC-yXuc1__OzjwpsJPlxYUCQ"
+  },
+  {
+   "name": "Vevo",
+   "city": "YouTube",
+   "tags": "official music videos · opens YouTube",
+   "cat": "musictv",
+   "type": "link",
+   "url": "https://www.youtube.com/@Vevo/videos"
+  },
+  {
+   "name": "Pluto TV — Music",
+   "city": "Free · web & app",
+   "tags": "Vevo channels · genre blocks · live",
+   "cat": "musictv",
+   "type": "link",
+   "url": "https://pluto.tv/us/live-tv/music"
+  },
+  {
+   "name": "XITE",
+   "city": "Free · web & TV app",
+   "tags": "24/7 music video channels",
+   "cat": "musictv",
+   "type": "link",
+   "url": "https://xite.com/"
+  },
+  {
+   "name": "ROXi",
+   "city": "Free · smart TVs",
+   "tags": "music videos · karaoke",
+   "cat": "musictv",
+   "type": "link",
+   "url": "https://roxi.tv/"
+  },
+  {
+   "name": "Samsung TV Plus",
+   "city": "Free · Samsung TVs & Galaxy phones",
+   "tags": "Vevo partner channels · live",
+   "cat": "musictv",
+   "type": "link",
+   "url": "https://www.samsungtvplus.com/"
+  },
+  {
+   "name": "Vizio WatchFree+",
+   "city": "Free · Vizio TVs only",
+   "tags": "music video channels",
+   "cat": "musictv",
+   "type": "link",
+   "url": "https://www.vizio.com/en/watchfreeplus"
+  }
+ ]
+}
