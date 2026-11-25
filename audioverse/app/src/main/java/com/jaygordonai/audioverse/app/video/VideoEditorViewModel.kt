@@ -72,7 +72,18 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
     private var nextId = System.currentTimeMillis()
 
     // Handles audio focus, so starting a video pauses music or radio (and the reverse).
+    /** Home-server videos need the Jellyfin / Access headers; phone files go through the content resolver as before. */
+    private val http = okhttp3.OkHttpClient.Builder()
+        .addNetworkInterceptor(com.jaygordonai.audioverse.network.SecureHeaderInterceptor { com.jaygordonai.audioverse.app.PlayerHolder.auth })
+        .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS).readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
     val player: ExoPlayer = ExoPlayer.Builder(app)
+        .setMediaSourceFactory(
+            androidx.media3.exoplayer.source.DefaultMediaSourceFactory(
+                androidx.media3.datasource.DefaultDataSource.Factory(app, androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(http).setUserAgent("AudioVerse/0.9"))
+            )
+        )
         .setAudioAttributes(
             AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
             /* handleAudioFocus = */ true
@@ -104,12 +115,14 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------------- Open ----------------
-    fun open(uri: Uri) {
+    fun open(uri: Uri, titleHint: String? = null) {
+        val remote = uri.scheme == com.jaygordonai.audioverse.app.server.HomeServer.SCHEME
         // Keep read access across restarts so a saved cut list can reopen its video.
-        try { ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: SecurityException) { }
-        val title = displayName(uri)
+        if (!remote) try { ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: SecurityException) { }
+        val title = titleHint ?: if (remote) "Home server video" else displayName(uri)
+        // Cut lists are keyed by the stable link (jellyfin://video/<id>), never by a stream URL.
         val saved = CutListStore.load(ctx, uri.toString())
-        player.setMediaItem(MediaItem.fromUri(uri))
+        player.setMediaItem(MediaItem.fromUri(com.jaygordonai.audioverse.app.server.HomeServer.resolve(uri)))
         player.prepare()
         _ui.update {
             VideoUi(
@@ -221,6 +234,11 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
         val s = _ui.value
         val uri = s.uri ?: return
         if (s.segments.isEmpty()) { _ui.update { it.copy(message = "Mark at least one segment first") }; return }
+        if (uri.scheme == com.jaygordonai.audioverse.app.server.HomeServer.SCHEME) {
+            // Exporting reads the whole file; for server videos use "Copy ffmpeg script" and cut on the Mac Mini instead.
+            _ui.update { it.copy(message = "Export works on phone files. For server videos, use Copy ffmpeg script and run it on the Mac Mini.") }
+            return
+        }
         player.pause()
         exportJob?.cancel()
         exportJob = viewModelScope.launch {
@@ -283,7 +301,7 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun openQueued(e: VideoEntry) {
         val q = _ui.value.queue; val i = _ui.value.queueIndex
-        open(Uri.parse(e.uri))
+        open(Uri.parse(e.uri), e.name)
         _ui.update { it.copy(queue = q, queueIndex = i) }
         player.play()
     }

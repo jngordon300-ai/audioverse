@@ -163,7 +163,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         val d = deck(id)
         d.applySound() // pick up any Sound-tab changes
         d.player.setMediaItem(
-            MediaItem.Builder().setUri(t.uri).setMediaId(t.id.toString())
+            MediaItem.Builder().setUri(com.jaygordonai.audioverse.app.server.HomeServer.resolve(t.uri)).setMediaId(t.id.toString())
                 .setMediaMetadata(MediaMetadata.Builder().setTitle(t.title).setArtist(t.artist).build())
                 .build()
         )

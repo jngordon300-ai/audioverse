@@ -116,6 +116,7 @@ private fun WatchScreen(s: PlayerUi, vm: VideoEditorViewModel, onImmersive: (Boo
     var addVideo by remember { mutableStateOf<VideoEntry?>(null) }
     var openList by rememberSaveable { mutableStateOf<Long?>(null) }
     var newList by remember { mutableStateOf(false) }
+    var serverQuery by rememberSaveable { mutableStateOf("") }
 
     val tv = remember(s.stations) { s.stations.filter { it.type == "tv" && it.ytChannel != null } }
     val more = remember(s.stations) { s.stations.filter { it.cat in StationCatalog.watchCats && it.type != "tv" } }
@@ -229,6 +230,38 @@ private fun WatchScreen(s: PlayerUi, vm: VideoEditorViewModel, onImmersive: (Boo
                         SmallText("+") { addVideo = VideoEntry(fv.uri.toString(), fv.name) }
                     }
                 }
+            }
+
+            // ---- Home server videos (Jellyfin on the Mac Mini)
+            if (s.serverVideos.isNotEmpty()) {
+                item {
+                    SectionTitle("From your home server (${s.serverVideos.size})")
+                    androidx.compose.material3.OutlinedTextField(
+                        value = serverQuery, onValueChange = { serverQuery = it.take(60) }, singleLine = true,
+                        placeholder = { Text("Search server videos") }, modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                val q = serverQuery.trim().lowercase()
+                val shown = (if (q.isEmpty()) s.serverVideos else s.serverVideos.filter { (it.name + " " + it.sub).lowercase().contains(q) }).take(500)
+                items(shown, key = { "sv:" + it.uri }) { sv ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (v.uri == sv.uri) AV.SurfaceHigh else AV.Ground)
+                            .clickable {
+                                channel = null
+                                val list = shown.map { VideoEntry(it.uri.toString(), it.name) }
+                                vm.playQueue(list, shown.indexOf(sv))
+                            }.padding(horizontal = 10.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(sv.name, color = if (v.uri == sv.uri) AV.Amber else AV.Text, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(sv.sub, color = AV.TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        SmallText("+") { addVideo = VideoEntry(sv.uri.toString(), sv.name) }
+                    }
+                }
+            } else if (s.server.configured && s.server.error != null) {
+                item { Text("Home server: ${s.server.error}", color = AV.Warn, fontSize = 12.sp) }
             }
 
             // ---- Video playlists

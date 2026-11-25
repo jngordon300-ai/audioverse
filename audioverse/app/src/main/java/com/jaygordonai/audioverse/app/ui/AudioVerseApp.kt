@@ -189,12 +189,16 @@ private fun AddToPlaylistDialog(t: com.jaygordonai.audioverse.app.player.Track, 
 private fun LibraryScreen(s: PlayerUi, vm: PlayerViewModel, onGrant: () -> Unit) {
     var creating by remember { mutableStateOf(false) }
     var managingFolders by remember { mutableStateOf(false) }
+    var managingServer by remember { mutableStateOf(false) }
     val openPlaylist = if (s.libTab == LibTab.PLAYLISTS) s.group?.toLongOrNull()?.let { id -> s.playlists.firstOrNull { it.id == id } } else null
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Library", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AV.Text, modifier = Modifier.weight(1f))
             TextButton(onClick = vm::rescan, enabled = s.scanning == null) { Text("Rescan", color = AV.Amber) }
             TextButton(onClick = { managingFolders = true }) { Text("Folders", color = AV.Amber) }
+            TextButton(onClick = { managingServer = true }) {
+                Text(if (s.server.configured) (if (s.server.error == null) "Server ●" else "Server !") else "Server", color = if (s.server.error != null) AV.Warn else AV.Amber)
+            }
         }
         Text(
             s.scanning ?: if (s.tracks.isEmpty()) "Your music, playlists and saved stations"
@@ -277,6 +281,7 @@ private fun LibraryScreen(s: PlayerUi, vm: PlayerViewModel, onGrant: () -> Unit)
         }
     }
     if (managingFolders) FoldersDialog(s, vm, onClose = { managingFolders = false })
+    if (managingServer) ServerDialog(s, vm, onClose = { managingServer = false })
     if (creating) {
         var name by remember { mutableStateOf("") }
         AlertDialog(

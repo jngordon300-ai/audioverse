@@ -28,6 +28,9 @@ import com.jaygordonai.audioverse.app.library.FolderInfo
 import com.jaygordonai.audioverse.app.library.FolderLibrary
 import com.jaygordonai.audioverse.app.library.FolderVideo
 import com.jaygordonai.audioverse.app.library.Playlist
+import com.jaygordonai.audioverse.app.server.HomeServer
+import com.jaygordonai.audioverse.app.server.ServerStatus
+import com.jaygordonai.audioverse.app.server.ServerVideo
 import com.jaygordonai.audioverse.app.library.PlaylistEntry
 import com.jaygordonai.audioverse.app.library.PlaylistOps
 import com.jaygordonai.audioverse.app.library.PlaylistStore
@@ -72,6 +75,10 @@ data class PlayerUi(
     /** Picked folders (phone, SD, USB drives like a T5). */
     val folders: List<FolderInfo> = emptyList(),
     val folderVideos: List<FolderVideo> = emptyList(),
+    /** Jellyfin on the Mac Mini. */
+    val server: ServerStatus = ServerStatus(),
+    val serverVideos: List<ServerVideo> = emptyList(),
+    val serverBusy: Boolean = false,
     /** Progress text while a rescan runs. */
     val scanning: String? = null,
     /** Asks the Video tab to switch mode (e.g. "WATCH" when a video is opened from another app). */
@@ -158,7 +165,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
         // System broadcasts only; not exported to other apps.
         ContextCompat.registerReceiver(ctx, mountReceiver, mounts, ContextCompat.RECEIVER_NOT_EXPORTED)
-        if (FolderLibrary.savedFolders(ctx).isNotEmpty()) loadLibrary()
+        if (FolderLibrary.savedFolders(ctx).isNotEmpty() || HomeServer.isConfigured(ctx)) loadLibrary()
         viewModelScope.launch {
             val cat = try { StationCatalog.load(ctx) } catch (e: Exception) { StationCatalog.Data(emptyList(), emptyList()) }
             val lists = PlaylistStore.load(ctx)
@@ -207,11 +214,19 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 com.jaygordonai.audioverse.app.library.FolderScan(emptyList(), emptyList(), emptyList())
             }
-            val merged = FolderLibrary.mergeWith(phone, folders.tracks)
+            val server = try {
+                HomeServer.load(ctx) { msg -> _ui.update { it.copy(scanning = msg) } }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                null
+            }
+            val local = FolderLibrary.mergeWith(phone, folders.tracks)
+            val merged = FolderLibrary.mergeWith(local, server?.tracks ?: emptyList())
             _ui.update {
                 it.copy(
                     tracks = merged, loading = false, scanning = null,
                     folders = folders.folders, folderVideos = folders.videos,
+                    server = server?.status ?: ServerStatus(), serverVideos = server?.videos ?: emptyList(),
                     highlighted = it.highlighted.coerceAtMost((merged.size - 1).coerceAtLeast(0))
                 )
             }
@@ -220,6 +235,31 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun rescan() = loadLibrary()
+
+    // ---------------- Home server (Jellyfin on the Mac Mini) ----------------
+    /** Returns an error message, or null when connected. The password is used once and not kept. */
+    fun connectServer(home: String, remote: String, user: String, password: String, cfId: String, cfSecret: String, done: (String?) -> Unit) {
+        _ui.update { it.copy(serverBusy = true) }
+        viewModelScope.launch {
+            val err = try { HomeServer.connect(ctx, home, remote, user, password, cfId, cfSecret) } catch (e: Exception) { "Couldn't connect" }
+            _ui.update { it.copy(serverBusy = false) }
+            done(err)
+            if (err == null) loadLibrary()
+        }
+    }
+
+    fun disconnectServer() {
+        viewModelScope.launch {
+            HomeServer.disconnect(ctx)
+            _ui.update { it.copy(server = ServerStatus(), serverVideos = emptyList()) }
+            loadLibrary()
+        }
+    }
+
+    fun setServerDataSaver(on: Boolean) {
+        HomeServer.setDataSaver(ctx, on)
+        _ui.update { it.copy(server = it.server.copy(dataSaver = on)) }
+    }
 
     fun addFolder(tree: Uri) { FolderLibrary.addFolder(ctx, tree); loadLibrary() }
     fun removeFolder(tree: String) { FolderLibrary.removeFolder(ctx, tree); loadLibrary() }
@@ -272,7 +312,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         lastIcyTitle = null
         val items = tracks.map { t ->
             MediaItem.Builder()
-                .setUri(t.uri)
+                .setUri(HomeServer.resolve(t.uri))
                 .setMediaId(t.id.toString())
                 .setMediaMetadata(
                     MediaMetadata.Builder()
