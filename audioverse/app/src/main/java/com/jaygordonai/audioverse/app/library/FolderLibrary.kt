@@ -100,7 +100,8 @@ object FolderLibrary {
                     artist = meta.optString("artist").ifBlank { "Unknown artist" },
                     album = meta.optString("album").ifBlank { name.substringAfter("· ") },
                     durationMs = meta.optLong("dur"),
-                    trackNumber = meta.optInt("no")
+                    trackNumber = meta.optInt("no"),
+                    folder = if (f.dir.isEmpty()) name else "$name/${f.dir}"
                 )
                 t++
             }
@@ -112,7 +113,7 @@ object FolderLibrary {
         FolderScan(tracks, videos.sortedBy { it.name.lowercase() }, infos)
     }
 
-    private class FileRef(val uri: Uri, val name: String, val modified: Long, val video: Boolean)
+    private class FileRef(val uri: Uri, val name: String, val modified: Long, val video: Boolean, val dir: String = "")
 
     private fun walk(c: Context, tree: Uri): List<FileRef> {
         val out = ArrayList<FileRef>()
@@ -121,7 +122,8 @@ object FolderLibrary {
         val probe = DocumentsContract.buildDocumentUriUsingTree(tree, rootId)
         c.contentResolver.query(probe, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)?.use { if (!it.moveToFirst()) error("gone") }
             ?: error("gone")
-        val stack = ArrayDeque<Pair<String, Int>>().apply { add(rootId to 0) }
+        // (document id, depth, path below the picked folder)
+        val stack = ArrayDeque<Triple<String, Int, String>>().apply { add(Triple(rootId, 0, "")) }
         val cols = arrayOf(
             DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
@@ -129,7 +131,7 @@ object FolderLibrary {
             DocumentsContract.Document.COLUMN_LAST_MODIFIED
         )
         while (stack.isNotEmpty() && out.size < MAX_FILES) {
-            val (docId, depth) = stack.removeLast()
+            val (docId, depth, dirPath) = stack.removeLast()
             val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId)
             c.contentResolver.query(children, cols, null, null, null)?.use { cur ->
                 while (cur.moveToNext() && out.size < MAX_FILES) {
@@ -138,14 +140,14 @@ object FolderLibrary {
                     if (name.startsWith(".")) continue
                     val mime = cur.getString(2) ?: ""
                     if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
-                        if (depth < MAX_DEPTH) stack.add(id to depth + 1)
+                        if (depth < MAX_DEPTH) stack.add(Triple(id, depth + 1, if (dirPath.isEmpty()) name else "$dirPath/$name"))
                         continue
                     }
                     val ext = name.substringAfterLast('.', "").lowercase()
                     val isAudio = mime.startsWith("audio/") || ext in audioExt
                     val isVideo = !isAudio && (mime.startsWith("video/") || ext in videoExt)
                     if (!isAudio && !isVideo) continue
-                    out += FileRef(DocumentsContract.buildDocumentUriUsingTree(tree, id), name, cur.getLong(3), isVideo)
+                    out += FileRef(DocumentsContract.buildDocumentUriUsingTree(tree, id), name, cur.getLong(3), isVideo, dirPath)
                 }
             }
         }

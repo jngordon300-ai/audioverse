@@ -41,6 +41,8 @@
 
 | Home server (v0.10) | Jellyfin token from a one-time username/password sign-in (password not stored) and optional Cloudflare Access service token, both in the Keystore-encrypted CredentialStore; server addresses, user ID and server ID in an encrypted SecretPrefs. Sent only as headers by SecureHeaderInterceptor: over HTTPS, or over plain http **only** to the saved private-network IP literal (10/8, 172.16/12, 192.168/16, 100.64/10, fc00::/7). Before using the private address the app checks, with a header-less request, that the server there reports the signed-in server ID. Access headers go only to the tunnel host over HTTPS. Songs and videos are saved as `jellyfin://` links, so no stream URL or token is stored. Sign out revokes the token on the server and wipes the local copies. Export (Transformer) is disabled for server videos. |
 
+| Presets & search (v0.11) | EQ presets are numbers only, kept in the existing sound prefs. Search runs on the phone over the loaded library; nothing is sent anywhere. Folder paths are read from MediaStore's relative path and the picked folders, and shown only in the app. |
+
 ## Known follow-ups
 - Station `WHUR World (HD2)` uses the same stream URL as `WHUR 96.3` in the catalog; check the HD2 URL.
 - Pin GitHub Actions to commit SHAs once versions settle.

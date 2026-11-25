@@ -22,6 +22,8 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -65,6 +67,30 @@ fun SoundScreen(s: PlayerUi, vm: PlayerViewModel) {
                 if (snd.preampDb > 0f) {
                     Text("Boost above 0 dB. Keep volume moderate on earbuds.", color = AV.Warn, fontSize = 12.sp)
                 }
+            }
+        }
+
+        item {
+            val all = com.jaygordonai.audioverse.app.player.EqPresets.builtIn + s.customPresets
+            val current = com.jaygordonai.audioverse.app.player.EqPresets.matching(snd.eqDb, all)
+            var saving by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            Panel("Presets", value = current?.name ?: "Custom") {
+                ChipRow(all.map { it.name to it.name }, current?.name ?: "") { n -> all.firstOrNull { it.name == n }?.let(vm::applyPreset) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("One tap sets the curve and a safe preamp.", color = AV.TextMuted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { saving = true }) { Text("Save mine", color = AV.Amber, fontSize = 12.sp) }
+                    if (current?.custom == true) TextButton(onClick = { vm.deleteCustomPreset(current.name) }) { Text("Delete", color = AV.Warn, fontSize = 12.sp) }
+                }
+            }
+            if (saving) {
+                var name by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { saving = false },
+                    title = { Text("Save this EQ") },
+                    text = { androidx.compose.material3.OutlinedTextField(value = name, onValueChange = { name = it.take(24) }, singleLine = true, label = { Text("Preset name") }) },
+                    confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { vm.saveCustomPreset(name); saving = false }) { Text("Save") } },
+                    dismissButton = { TextButton(onClick = { saving = false }) { Text("Cancel") } }
+                )
             }
         }
 

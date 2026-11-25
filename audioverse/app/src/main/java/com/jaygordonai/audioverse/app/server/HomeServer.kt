@@ -194,7 +194,8 @@ object HomeServer {
                     artist = o.optString("AlbumArtist").ifBlank { o.optJSONArray("Artists")?.optString(0).orEmpty() }.ifBlank { "Unknown artist" },
                     album = o.optString("Album"),
                     durationMs = o.optLong("RunTimeTicks") / 10_000,
-                    trackNumber = o.optInt("IndexNumber")
+                    trackNumber = o.optInt("IndexNumber"),
+                    folder = "Home server"
                 )
                 if (tracks.size % 1000 == 0) onProgress("Home server · ${tracks.size} songs…")
             }

@@ -207,7 +207,13 @@ private fun LibraryScreen(s: PlayerUi, vm: PlayerViewModel, onGrant: () -> Unit)
         )
         Spacer(Modifier.height(10.dp))
         ChipRow(LibTab.entries.map { it.name to it.label }, s.libTab.name) { vm.setLibTab(LibTab.valueOf(it)) }
-        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = s.query, onValueChange = vm::setQuery, singleLine = true,
+            placeholder = { Text("Search song, artist, album or folder") },
+            trailingIcon = { if (s.query.isNotEmpty()) TextButton(onClick = { vm.setQuery("") }) { Text("Clear", color = AV.Amber, fontSize = 12.sp) } },
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+        )
+        Spacer(Modifier.height(6.dp))
 
         if (s.group != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -236,6 +242,7 @@ private fun LibraryScreen(s: PlayerUi, vm: PlayerViewModel, onGrant: () -> Unit)
                     if (s.groups.isEmpty()) item { Text("Nothing here yet.", color = AV.TextMuted) }
                 }
             }
+            s.visible.isEmpty() && s.query.isNotBlank() -> Text("No songs match \"${s.query}\".", color = AV.TextMuted, modifier = Modifier.padding(top = 8.dp))
             s.visible.isEmpty() -> Text(
                 if (openPlaylist != null) "Empty. Tap + on any song or station to add it here." else "No music files found on this phone.",
                 color = AV.TextMuted, modifier = Modifier.padding(top = 8.dp)
@@ -254,7 +261,7 @@ private fun LibraryScreen(s: PlayerUi, vm: PlayerViewModel, onGrant: () -> Unit)
                             t, highlighted = i == s.highlighted, playing = s.nowPlaying?.id == t.id,
                             onClick = { vm.playFrom(i) },
                             trailing = {
-                                if (openPlaylist != null) {
+                                if (openPlaylist != null && s.query.isBlank()) {
                                     SmallText("↑") { vm.moveInOpenPlaylist(i, -1) }
                                     SmallText("↓") { vm.moveInOpenPlaylist(i, 1) }
                                     SmallText("✕") { vm.removeFromOpenPlaylist(i) }
@@ -331,6 +338,41 @@ private fun FoldersDialog(s: PlayerUi, vm: PlayerViewModel, onClose: () -> Unit)
     )
 }
 
+/** Search the whole library from Now Playing: song, artist, album or folder. Tap plays the results in order. */
+@Composable
+private fun SearchDialog(vm: PlayerViewModel, onClose: () -> Unit) {
+    var q by remember { mutableStateOf("") }
+    val results = remember(q) { vm.searchAll(q) }
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("Search") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedTextField(value = q, onValueChange = { q = it.take(60) }, singleLine = true,
+                    placeholder = { Text("Song, artist, album or folder") }, modifier = Modifier.fillMaxWidth())
+                if (q.isNotBlank()) Text(if (results.isEmpty()) "No matches" else "${results.size}${if (results.size >= 300) "+" else ""} matches", color = AV.TextMuted, fontSize = 12.sp)
+                LazyColumn(Modifier.height(360.dp)) {
+                    itemsIndexed(results, key = { i, t -> "$i:${t.id}" }) { i, t ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable { vm.playQueue(results, i); onClose() }
+                                .padding(vertical = 8.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(t.title, color = AV.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(listOf(t.artist, t.album, t.folder).filter { it.isNotBlank() }.joinToString(" · "), color = AV.TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            Text(formatTime(t.durationMs), color = AV.TextMuted, fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onClose) { Text("Close") } }
+    )
+}
+
 @Composable
 private fun GroupRow(g: LibGroup, onClick: () -> Unit) {
     Row(
@@ -390,6 +432,8 @@ private fun TrackRow(t: Track, highlighted: Boolean, playing: Boolean, onClick: 
 @Composable
 private fun NowPlayingScreen(s: PlayerUi, vm: PlayerViewModel) {
     val t = s.nowPlaying
+    var searching by remember { mutableStateOf(false) }
+    if (searching) SearchDialog(vm, onClose = { searching = false })
     Column(
         Modifier.fillMaxSize().padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -407,7 +451,9 @@ private fun NowPlayingScreen(s: PlayerUi, vm: PlayerViewModel) {
                 Text(if (PlaylistOps.contains(s.playlists, PlaylistOps.FAVORITES_ID, t.id)) "♥ Favorite" else "♡ Favorite", color = AV.Amber)
             }
             TextButton(onClick = { vm.askAddToPlaylist(t) }) { Text("+ Playlist", color = AV.Amber) }
+            TextButton(onClick = { searching = true }) { Text("Search", color = AV.Amber) }
         }
+        if (t == null) TextButton(onClick = { searching = true }) { Text("Search your music", color = AV.Amber) }
         Spacer(Modifier.height(4.dp))
         if (t?.live == true) {
             Text("● LIVE", color = AV.Amber, fontWeight = FontWeight.Bold, fontSize = 13.sp)

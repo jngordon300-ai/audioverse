@@ -49,7 +49,7 @@ import kotlinx.coroutines.launch
 enum class Screen { LIBRARY, RADIO, NOW_PLAYING, DJ, VIDEO, SOUND, DIAGNOSTICS }
 
 /** Library categories. */
-enum class LibTab(val label: String) { SONGS("Songs"), ARTISTS("Artists"), ALBUMS("Albums"), PLAYLISTS("Playlists") }
+enum class LibTab(val label: String) { SONGS("Songs"), ARTISTS("Artists"), ALBUMS("Albums"), FOLDERS("Folders"), PLAYLISTS("Playlists") }
 
 /** A row in the Artists / Albums / Playlists category lists. */
 data class LibGroup(val key: String, val title: String, val count: Int)
@@ -60,6 +60,8 @@ data class PlayerUi(
     val loading: Boolean = false,
     val tracks: List<Track> = emptyList(),
     val libTab: LibTab = LibTab.SONGS,
+    /** Library search: matches song, artist, album or folder. */
+    val query: String = "",
     /** Open artist, album or playlist id (as text) inside the current tab; null = the category list. */
     val group: String? = null,
     /** Songs shown right now (what the wheel scrolls and what plays). */
@@ -91,6 +93,7 @@ data class PlayerUi(
     val volumeText: String? = null,
     val error: String? = null,
     val sound: SoundSettings = SoundSettings(),
+    val customPresets: List<EqPreset> = emptyList(),
     val limiterGrDb: Float = 0f,
     val correlation: Float = 0f,
     val nearMono: Boolean = false
@@ -101,7 +104,7 @@ data class PlayerUi(
 class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val ctx: Application get() = getApplication()
-    private val _ui = MutableStateFlow(PlayerUi(sound = SoundSettings.load(app)))
+    private val _ui = MutableStateFlow(PlayerUi(sound = SoundSettings.load(app), customPresets = EqPresets.loadCustom(app)))
     val ui: StateFlow<PlayerUi> = _ui.asStateFlow()
     private val audio = app.getSystemService(AudioManager::class.java)
     private var queue: List<Track> = emptyList()
@@ -279,12 +282,22 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- Library categories ----------------
     fun setLibTab(tab: LibTab) { _ui.update { it.copy(libTab = tab, group = null, highlighted = 0) }; recompute() }
     fun openGroup(key: String?) { _ui.update { it.copy(group = key, highlighted = 0) }; recompute() }
+    fun setQuery(q: String) { _ui.update { it.copy(query = q.take(60), highlighted = 0) }; recompute() }
+
+    /** Search across the whole library (Now Playing search). */
+    fun searchAll(q: String): List<Track> { val t = q.trim(); return if (t.isEmpty()) emptyList() else _ui.value.tracks.filter { it.matches(t) }.take(300) }
 
     /** Rebuilds the visible song list and the category rows from the library, tab and group. */
     private fun recompute() = _ui.update { s ->
+        val q = s.query.trim()
         val all = s.tracks
-        val (groups, visible) = when (s.libTab) {
+        val hits = if (q.isEmpty()) all else all.filter { it.matches(q) }
+        val (groups0, visible0) = when (s.libTab) {
             LibTab.SONGS -> emptyList<LibGroup>() to all
+            LibTab.FOLDERS -> {
+                val g = all.groupBy { it.folder.ifBlank { "Other" } }.map { (k, v) -> LibGroup(k, k, v.size) }.sortedBy { it.title.lowercase() }
+                g to (s.group?.let { k -> all.filter { it.folder.ifBlank { "Other" } == k } } ?: emptyList())
+            }
             LibTab.ARTISTS -> {
                 val g = all.groupBy { it.artist }.map { (k, v) -> LibGroup(k, k, v.size) }.sortedBy { it.title.lowercase() }
                 g to (s.group?.let { k -> all.filter { it.artist == k } } ?: emptyList())
@@ -299,6 +312,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 val open = s.group?.toLongOrNull()?.let { id -> s.playlists.firstOrNull { it.id == id } }
                 g to (open?.entries?.map { e -> all.firstOrNull { it.id == e.id } ?: e.toTrack() } ?: emptyList())
             }
+        }
+        // Search: songs must match; category rows show if their name or any of their songs match.
+        val visible = if (q.isEmpty()) visible0 else visible0.filter { it.matches(q) }
+        val groups = if (q.isEmpty()) groups0 else {
+            val keys = when (s.libTab) {
+                LibTab.ARTISTS -> hits.map { it.artist }.toSet()
+                LibTab.ALBUMS -> hits.map { it.album }.toSet()
+                LibTab.FOLDERS -> hits.map { it.folder.ifBlank { "Other" } }.toSet()
+                else -> emptySet()
+            }
+            groups0.filter { it.title.contains(q, true) || it.key in keys }
         }
         s.copy(groups = groups, visible = visible, highlighted = s.highlighted.coerceIn(0, (visible.size - 1).coerceAtLeast(0)))
     }
@@ -484,6 +508,21 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         s.copy(eqDb = s.eqDb.toMutableList().also { it[band] = (Math.round(db * 2) / 2f).coerceIn(-12f, 12f) })
     }
     fun flatEq() = updateSound { it.copy(eqDb = List(10) { 0f }) }
+
+    /** One tap: curve + matching preamp, EQ switched on. */
+    fun applyPreset(p: EqPreset) = updateSound { it.copy(eqDb = p.bands, preampDb = p.preampDb, eqEnabled = true) }
+
+    fun saveCustomPreset(name: String) {
+        val n = name.trim().take(24).ifEmpty { return }
+        val p = EqPreset(n, _ui.value.sound.eqDb, custom = true)
+        val next = (listOf(p) + _ui.value.customPresets.filterNot { it.name.equals(n, true) }).take(EqPresets.MAX_CUSTOM)
+        EqPresets.saveCustom(ctx, next); _ui.update { it.copy(customPresets = next) }
+    }
+
+    fun deleteCustomPreset(name: String) {
+        val next = _ui.value.customPresets.filterNot { it.name == name }
+        EqPresets.saveCustom(ctx, next); _ui.update { it.copy(customPresets = next) }
+    }
     fun setEqEnabled(on: Boolean) = updateSound { it.copy(eqEnabled = on) }
     fun setLimiter(on: Boolean) = updateSound { it.copy(limiterEnabled = on) }
     fun setVocalMode(m: VocalStage.Mode) = updateSound { it.copy(vocalMode = m) }
