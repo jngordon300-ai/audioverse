@@ -37,6 +37,8 @@
 | Android TV (v0.8) | Same permissions as the phone. Leanback and touchscreen are declared optional, so nothing new is requested. |
 | Browser edition (v0.8) | `web/AudioVerse.html`: no server or account, and all scripts are inlined (hls.js and mpegts.js from npm, Apache-2.0). A Content-Security-Policy blocks other script sources and frames other than youtube-nocookie. Local files are read in the browser only. localStorage holds playlists/settings; IPTV links are session-only unless "Remember" is ticked (then stored unencrypted, with a warning). |
 
+| Video playlists (v0.9) | `files/video_playlists.json`: video names and content URIs only, app-private, not backed up. Uses the same folder grants as the library; no new permissions. |
+
 ## Known follow-ups
 - Station `WHUR World (HD2)` uses the same stream URL as `WHUR 96.3` in the catalog; check the HD2 URL.
 - Pin GitHub Actions to commit SHAs once versions settle.

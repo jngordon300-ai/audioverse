@@ -65,10 +65,11 @@ import com.jaygordonai.audioverse.app.radio.Station
 import com.jaygordonai.audioverse.app.radio.StationCatalog
 import com.jaygordonai.audioverse.app.theme.AV
 import com.jaygordonai.audioverse.app.video.VideoEditorViewModel
+import com.jaygordonai.audioverse.app.video.VideoEntry
 
 /** Video tab: Watch (Music TV + phone videos), TV (IPTV / M3U) or Edit (the cut editor). */
 @Composable
-fun VideoHub(s: PlayerUi, vm: VideoEditorViewModel, iptv: IptvViewModel, onImmersive: (Boolean) -> Unit, onModeHandled: () -> Unit = {}) {
+fun VideoHub(s: PlayerUi, vm: VideoEditorViewModel, iptv: IptvViewModel, onImmersive: (Boolean) -> Unit, onModeHandled: () -> Unit = {}, onAddFolder: (android.net.Uri) -> Unit = {}) {
     val activity = LocalContext.current as? Activity
     var mode by rememberSaveable { mutableStateOf("WATCH") }
     var tvFull by rememberSaveable { mutableStateOf(false) }
@@ -90,7 +91,7 @@ fun VideoHub(s: PlayerUi, vm: VideoEditorViewModel, iptv: IptvViewModel, onImmer
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (mode) {
-                "WATCH" -> WatchScreen(s, vm, onImmersive, onEdit = { mode = "EDIT" })
+                "WATCH" -> WatchScreen(s, vm, onImmersive, onEdit = { mode = "EDIT" }, onAddFolder = onAddFolder)
                 "TV" -> IptvScreen(iptv, full = tvFull, onFullscreen = { tvFull = it })
                 else -> VideoScreen(vm)
             }
@@ -100,7 +101,7 @@ fun VideoHub(s: PlayerUi, vm: VideoEditorViewModel, iptv: IptvViewModel, onImmer
 
 @OptIn(UnstableApi::class)
 @Composable
-private fun WatchScreen(s: PlayerUi, vm: VideoEditorViewModel, onImmersive: (Boolean) -> Unit, onEdit: () -> Unit) {
+private fun WatchScreen(s: PlayerUi, vm: VideoEditorViewModel, onImmersive: (Boolean) -> Unit, onEdit: () -> Unit, onAddFolder: (android.net.Uri) -> Unit) {
     val context = LocalContext.current
     val activity = context as? Activity
     val v by vm.ui.collectAsStateWithLifecycle()
@@ -111,6 +112,10 @@ private fun WatchScreen(s: PlayerUi, vm: VideoEditorViewModel, onImmersive: (Boo
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { vm.open(it); channel = null; vm.player.play() }
     }
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let(onAddFolder) }
+    var addVideo by remember { mutableStateOf<VideoEntry?>(null) }
+    var openList by rememberSaveable { mutableStateOf<Long?>(null) }
+    var newList by remember { mutableStateOf(false) }
 
     val tv = remember(s.stations) { s.stations.filter { it.type == "tv" && it.ytChannel != null } }
     val more = remember(s.stations) { s.stations.filter { it.cat in StationCatalog.watchCats && it.type != "tv" } }
@@ -173,8 +178,17 @@ private fun WatchScreen(s: PlayerUi, vm: VideoEditorViewModel, onImmersive: (Boo
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(v.title, color = AV.Text, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { phoneFull = true }) { Text("Full screen", color = AV.Amber) }
-                        TextButton(onClick = { vm.player.pause(); onEdit() }) { Text("Cut it ›", color = AV.Amber) }
+                        TextButton(onClick = { phoneFull = true }) { Text("Full", color = AV.Amber) }
+                        TextButton(onClick = { addVideo = VideoEntry(v.uri.toString(), v.title) }) { Text("+ List", color = AV.Amber) }
+                        TextButton(onClick = { vm.player.pause(); onEdit() }) { Text("Cut ›", color = AV.Amber) }
+                    }
+                    if (v.queue.size > 1) Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Up next ${v.queueIndex + 1} of ${v.queue.size}" + (v.queue.getOrNull(v.queueIndex + 1)?.let { " · ${it.name}" } ?: ""),
+                            color = AV.TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+                        )
+                        SmallText("◀") { vm.stepQueue(-1) }
+                        SmallText("▶") { vm.stepQueue(1) }
                     }
                     v.message?.let { Text(it, color = AV.TextMuted, fontSize = 12.sp) }
                 }
@@ -187,7 +201,11 @@ private fun WatchScreen(s: PlayerUi, vm: VideoEditorViewModel, onImmersive: (Boo
                 ) {
                     Text("Play a video from your phone", color = AV.Text, fontWeight = FontWeight.SemiBold)
                     Text("You pick one file at a time. AudioVerse can't see your other videos or photos.", color = AV.TextMuted, fontSize = 12.sp)
-                    Button(onClick = { pick.launch(arrayOf("video/*")) }) { Text(if (v.uri == null) "Open a video" else "Open another") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { pick.launch(arrayOf("video/*")) }) { Text(if (v.uri == null) "Open a video" else "Open another") }
+                        OutlinedButton(onClick = { pickFolder.launch(null) }) { Text("+ Add video folder", color = AV.Amber) }
+                    }
+                    Text("Folders can be on the phone, an SD card or a USB drive (e.g. a T5). Videos inside show below.", color = AV.TextMuted, fontSize = 11.sp)
                 }
             }
 
@@ -196,14 +214,57 @@ private fun WatchScreen(s: PlayerUi, vm: VideoEditorViewModel, onImmersive: (Boo
                 items(s.folderVideos, key = { "fv:" + it.uri }) { fv ->
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (v.uri == fv.uri) AV.SurfaceHigh else AV.Ground)
-                            .clickable { channel = null; vm.open(fv.uri); vm.player.play() }.padding(horizontal = 10.dp, vertical = 10.dp),
+                            .clickable {
+                                channel = null
+                                // Plays on through the folder's videos.
+                                val all = s.folderVideos.map { VideoEntry(it.uri.toString(), it.name) }
+                                vm.playQueue(all, s.folderVideos.indexOf(fv))
+                            }.padding(horizontal = 10.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(fv.name, color = if (v.uri == fv.uri) AV.Amber else AV.Text, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(fv.folder, color = AV.TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
-                        Text("PLAY", color = AV.Amber, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        SmallText("+") { addVideo = VideoEntry(fv.uri.toString(), fv.name) }
+                    }
+                }
+            }
+
+            // ---- Video playlists
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) { SectionTitle("Video playlists") }
+                    TextButton(onClick = { newList = true }) { Text("+ New", color = AV.Amber) }
+                }
+                if (v.playlists.isEmpty()) Text("Tap + on any video to start a playlist.", color = AV.TextMuted, fontSize = 12.sp)
+            }
+            items(v.playlists, key = { "vp:" + it.id }) { p ->
+                Column {
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { openList = if (openList == p.id) null else p.id }
+                            .padding(horizontal = 10.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(p.name, color = AV.Text, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("${p.items.size}", color = AV.TextMuted, fontSize = 12.sp)
+                        if (p.items.isNotEmpty()) SmallText("▶ All") { channel = null; vm.playQueue(p.items, 0) }
+                        SmallText(if (openList == p.id) "▴" else "▾") { openList = if (openList == p.id) null else p.id }
+                    }
+                    if (openList == p.id) {
+                        p.items.forEachIndexed { i, e ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(start = 18.dp).clip(RoundedCornerShape(8.dp))
+                                    .clickable { channel = null; vm.playQueue(p.items, i) }.padding(vertical = 6.dp, horizontal = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(e.name, color = if (v.uri?.toString() == e.uri) AV.Amber else AV.Text, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                SmallText("↑") { vm.moveInPlaylist(p.id, i, -1) }
+                                SmallText("↓") { vm.moveInPlaylist(p.id, i, 1) }
+                                SmallText("✕") { vm.removeFromPlaylist(p.id, i) }
+                            }
+                        }
+                        TextButton(onClick = { vm.deletePlaylist(p.id); openList = null }) { Text("Delete playlist", color = AV.Warn, fontSize = 12.sp) }
                     }
                 }
             }
@@ -223,6 +284,42 @@ private fun WatchScreen(s: PlayerUi, vm: VideoEditorViewModel, onImmersive: (Boo
                 }
             }
             item { Spacer(Modifier.height(16.dp)) }
+        }
+
+        addVideo?.let { e ->
+            var name by remember { mutableStateOf("") }
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { addVideo = null },
+                title = { Text("Add to video playlist") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(e.name, color = AV.TextMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        v.playlists.forEach { p ->
+                            val inIt = p.items.any { it.uri == e.uri }
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable(enabled = !inIt) { vm.addToPlaylist(p.id, e); addVideo = null }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp)
+                            ) {
+                                Text(p.name, color = if (inIt) AV.TextMuted else AV.Text, modifier = Modifier.weight(1f))
+                                Text(if (inIt) "added" else "${p.items.size}", color = AV.TextMuted, fontSize = 12.sp)
+                            }
+                        }
+                        androidx.compose.material3.OutlinedTextField(value = name, onValueChange = { name = it.take(40) }, singleLine = true, label = { Text("New playlist") }, modifier = Modifier.fillMaxWidth())
+                    }
+                },
+                confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { vm.createPlaylist(name, e); addVideo = null }) { Text("Create & add") } },
+                dismissButton = { TextButton(onClick = { addVideo = null }) { Text("Close") } }
+            )
+        }
+        if (newList) {
+            var name by remember { mutableStateOf("") }
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { newList = false },
+                title = { Text("New video playlist") },
+                text = { androidx.compose.material3.OutlinedTextField(value = name, onValueChange = { name = it.take(40) }, singleLine = true, label = { Text("Name") }) },
+                confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { vm.createPlaylist(name); newList = false }) { Text("Create") } },
+                dismissButton = { TextButton(onClick = { newList = false }) { Text("Cancel") } }
+            )
         }
 
         // Full-screen layers sit on top so the WebView underneath keeps playing.

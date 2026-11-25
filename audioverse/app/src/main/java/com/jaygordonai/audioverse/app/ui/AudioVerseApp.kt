@@ -110,7 +110,7 @@ fun AudioVerseApp(
                     Screen.RADIO -> RadioScreen(s, vm)
                     Screen.NOW_PLAYING -> NowPlayingScreen(s, vm)
                     Screen.DJ -> DjScreen(s, djVm())
-                    Screen.VIDEO -> VideoHub(s, videoVm(), iptvVm(), onImmersive = { immersive = it }, onModeHandled = vm::consumeVideoModeRequest)
+                    Screen.VIDEO -> VideoHub(s, videoVm(), iptvVm(), onImmersive = { immersive = it }, onModeHandled = vm::consumeVideoModeRequest, onAddFolder = vm::addFolder)
                     Screen.SOUND -> SoundScreen(s, vm)
                     Screen.DIAGNOSTICS -> ValuesTheme { GateScreen(gateVm()) }
                 }

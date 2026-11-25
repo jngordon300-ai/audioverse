@@ -38,6 +38,10 @@ data class ExportStatus(
 
 data class VideoUi(
     val uri: Uri? = null,
+    /** Video playlists, and the one playing now (Up next). */
+    val playlists: List<VideoPlaylist> = emptyList(),
+    val queue: List<VideoEntry> = emptyList(),
+    val queueIndex: Int = -1,
     val title: String = "",
     val durationMs: Long = 0,
     val positionMs: Long = 0,
@@ -81,6 +85,7 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
                 it.copy(message = "Can't play this video (${error.errorCodeName.removePrefix("ERROR_CODE_").lowercase().replace('_', ' ')})")
             }
             override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_ENDED) playNextInQueue()
                 if (state == Player.STATE_READY) {
                     val fps = videoFormat?.frameRate?.takeIf { it > 1f } ?: 30f
                     _ui.update { it.copy(durationMs = duration.takeIf { d -> d != C.TIME_UNSET } ?: 0, frameMs = (1000f / fps).toLong().coerceAtLeast(1)) }
@@ -108,7 +113,7 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
         player.prepare()
         _ui.update {
             VideoUi(
-                uri = uri, title = title,
+                uri = uri, title = title, playlists = it.playlists,
                 template = saved?.first ?: it.template,
                 segments = saved?.second ?: emptyList(),
                 message = saved?.let { s -> "Restored ${s.second.size} saved segment(s)" }
@@ -251,6 +256,48 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
     fun clearMessage() = _ui.update { it.copy(message = null) }
 
     fun onBackgrounded() { if (!_ui.value.export.running) player.pause() }
+
+    // ---------------- Video playlists ----------------
+    init {
+        viewModelScope.launch { val l = VideoPlaylistStore.load(ctx); _ui.update { it.copy(playlists = l) } }
+    }
+
+    private fun editPlaylists(f: (List<VideoPlaylist>) -> List<VideoPlaylist>) {
+        val next = f(_ui.value.playlists)
+        _ui.update { it.copy(playlists = next) }
+        viewModelScope.launch { VideoPlaylistStore.save(ctx, next) }
+    }
+
+    fun createPlaylist(name: String, first: VideoEntry? = null) = editPlaylists { VideoPlaylistOps.create(it, name, System.currentTimeMillis(), first) }
+    fun addToPlaylist(id: Long, e: VideoEntry) = editPlaylists { VideoPlaylistOps.add(it, id, e) }
+    fun removeFromPlaylist(id: Long, index: Int) = editPlaylists { VideoPlaylistOps.removeAt(it, id, index) }
+    fun moveInPlaylist(id: Long, index: Int, dir: Int) = editPlaylists { VideoPlaylistOps.move(it, id, index, index + dir) }
+    fun deletePlaylist(id: Long) = editPlaylists { VideoPlaylistOps.delete(it, id) }
+
+    /** Plays a list of videos in order; each one opens like a normal video (cut lists still work). */
+    fun playQueue(items: List<VideoEntry>, index: Int) {
+        if (index !in items.indices) return
+        _ui.update { it.copy(queue = items, queueIndex = index) }
+        openQueued(items[index])
+    }
+
+    private fun openQueued(e: VideoEntry) {
+        val q = _ui.value.queue; val i = _ui.value.queueIndex
+        open(Uri.parse(e.uri))
+        _ui.update { it.copy(queue = q, queueIndex = i) }
+        player.play()
+    }
+
+    fun playNextInQueue() = stepQueue(1)
+    fun stepQueue(dir: Int) {
+        val s = _ui.value
+        val next = s.queueIndex + dir
+        if (s.queue.isEmpty() || next !in s.queue.indices) return
+        _ui.update { it.copy(queueIndex = next) }
+        openQueued(s.queue[next])
+    }
+
+    fun clearQueue() = _ui.update { it.copy(queue = emptyList(), queueIndex = -1) }
 
     override fun onCleared() {
         exportJob?.cancel()
