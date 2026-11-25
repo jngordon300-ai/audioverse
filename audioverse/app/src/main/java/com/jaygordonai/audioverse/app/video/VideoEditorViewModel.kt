@@ -7,6 +7,7 @@ import android.provider.OpenableColumns
 import androidx.annotation.OptIn
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -66,7 +67,13 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
     private var exportJob: Job? = null
     private var nextId = System.currentTimeMillis()
 
-    val player: ExoPlayer = ExoPlayer.Builder(app).build().apply {
+    // Handles audio focus, so starting a video pauses music or radio (and the reverse).
+    val player: ExoPlayer = ExoPlayer.Builder(app)
+        .setAudioAttributes(
+            AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
+            /* handleAudioFocus = */ true
+        )
+        .build().apply {
         setSeekParameters(SeekParameters.EXACT) // frame-accurate marks
         addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) = _ui.update { it.copy(isPlaying = isPlaying) }
