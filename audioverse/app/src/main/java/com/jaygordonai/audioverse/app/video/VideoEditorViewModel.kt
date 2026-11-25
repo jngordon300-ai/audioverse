@@ -7,6 +7,7 @@ import android.provider.OpenableColumns
 import androidx.annotation.OptIn
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -37,6 +38,10 @@ data class ExportStatus(
 
 data class VideoUi(
     val uri: Uri? = null,
+    /** Video playlists, and the one playing now (Up next). */
+    val playlists: List<VideoPlaylist> = emptyList(),
+    val queue: List<VideoEntry> = emptyList(),
+    val queueIndex: Int = -1,
     val title: String = "",
     val durationMs: Long = 0,
     val positionMs: Long = 0,
@@ -66,7 +71,24 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
     private var exportJob: Job? = null
     private var nextId = System.currentTimeMillis()
 
-    val player: ExoPlayer = ExoPlayer.Builder(app).build().apply {
+    // Handles audio focus, so starting a video pauses music or radio (and the reverse).
+    /** Home-server videos need the Jellyfin / Access headers; phone files go through the content resolver as before. */
+    private val http = okhttp3.OkHttpClient.Builder()
+        .addNetworkInterceptor(com.jaygordonai.audioverse.network.SecureHeaderInterceptor { com.jaygordonai.audioverse.app.PlayerHolder.auth })
+        .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS).readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
+    val player: ExoPlayer = ExoPlayer.Builder(app)
+        .setMediaSourceFactory(
+            androidx.media3.exoplayer.source.DefaultMediaSourceFactory(
+                androidx.media3.datasource.DefaultDataSource.Factory(app, androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(http).setUserAgent("AudioVerse/0.9"))
+            )
+        )
+        .setAudioAttributes(
+            AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
+            /* handleAudioFocus = */ true
+        )
+        .build().apply {
         setSeekParameters(SeekParameters.EXACT) // frame-accurate marks
         addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) = _ui.update { it.copy(isPlaying = isPlaying) }
@@ -74,6 +96,7 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
                 it.copy(message = "Can't play this video (${error.errorCodeName.removePrefix("ERROR_CODE_").lowercase().replace('_', ' ')})")
             }
             override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_ENDED) playNextInQueue()
                 if (state == Player.STATE_READY) {
                     val fps = videoFormat?.frameRate?.takeIf { it > 1f } ?: 30f
                     _ui.update { it.copy(durationMs = duration.takeIf { d -> d != C.TIME_UNSET } ?: 0, frameMs = (1000f / fps).toLong().coerceAtLeast(1)) }
@@ -92,16 +115,18 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------------- Open ----------------
-    fun open(uri: Uri) {
+    fun open(uri: Uri, titleHint: String? = null) {
+        val remote = uri.scheme == com.jaygordonai.audioverse.app.server.HomeServer.SCHEME
         // Keep read access across restarts so a saved cut list can reopen its video.
-        try { ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: SecurityException) { }
-        val title = displayName(uri)
+        if (!remote) try { ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: SecurityException) { }
+        val title = titleHint ?: if (remote) "Home server video" else displayName(uri)
+        // Cut lists are keyed by the stable link (jellyfin://video/<id>), never by a stream URL.
         val saved = CutListStore.load(ctx, uri.toString())
-        player.setMediaItem(MediaItem.fromUri(uri))
+        player.setMediaItem(MediaItem.fromUri(com.jaygordonai.audioverse.app.server.HomeServer.resolve(uri)))
         player.prepare()
         _ui.update {
             VideoUi(
-                uri = uri, title = title,
+                uri = uri, title = title, playlists = it.playlists,
                 template = saved?.first ?: it.template,
                 segments = saved?.second ?: emptyList(),
                 message = saved?.let { s -> "Restored ${s.second.size} saved segment(s)" }
@@ -209,6 +234,11 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
         val s = _ui.value
         val uri = s.uri ?: return
         if (s.segments.isEmpty()) { _ui.update { it.copy(message = "Mark at least one segment first") }; return }
+        if (uri.scheme == com.jaygordonai.audioverse.app.server.HomeServer.SCHEME) {
+            // Exporting reads the whole file; for server videos use "Copy ffmpeg script" and cut on the Mac Mini instead.
+            _ui.update { it.copy(message = "Export works on phone files. For server videos, use Copy ffmpeg script and run it on the Mac Mini.") }
+            return
+        }
         player.pause()
         exportJob?.cancel()
         exportJob = viewModelScope.launch {
@@ -244,6 +274,48 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
     fun clearMessage() = _ui.update { it.copy(message = null) }
 
     fun onBackgrounded() { if (!_ui.value.export.running) player.pause() }
+
+    // ---------------- Video playlists ----------------
+    init {
+        viewModelScope.launch { val l = VideoPlaylistStore.load(ctx); _ui.update { it.copy(playlists = l) } }
+    }
+
+    private fun editPlaylists(f: (List<VideoPlaylist>) -> List<VideoPlaylist>) {
+        val next = f(_ui.value.playlists)
+        _ui.update { it.copy(playlists = next) }
+        viewModelScope.launch { VideoPlaylistStore.save(ctx, next) }
+    }
+
+    fun createPlaylist(name: String, first: VideoEntry? = null) = editPlaylists { VideoPlaylistOps.create(it, name, System.currentTimeMillis(), first) }
+    fun addToPlaylist(id: Long, e: VideoEntry) = editPlaylists { VideoPlaylistOps.add(it, id, e) }
+    fun removeFromPlaylist(id: Long, index: Int) = editPlaylists { VideoPlaylistOps.removeAt(it, id, index) }
+    fun moveInPlaylist(id: Long, index: Int, dir: Int) = editPlaylists { VideoPlaylistOps.move(it, id, index, index + dir) }
+    fun deletePlaylist(id: Long) = editPlaylists { VideoPlaylistOps.delete(it, id) }
+
+    /** Plays a list of videos in order; each one opens like a normal video (cut lists still work). */
+    fun playQueue(items: List<VideoEntry>, index: Int) {
+        if (index !in items.indices) return
+        _ui.update { it.copy(queue = items, queueIndex = index) }
+        openQueued(items[index])
+    }
+
+    private fun openQueued(e: VideoEntry) {
+        val q = _ui.value.queue; val i = _ui.value.queueIndex
+        open(Uri.parse(e.uri), e.name)
+        _ui.update { it.copy(queue = q, queueIndex = i) }
+        player.play()
+    }
+
+    fun playNextInQueue() = stepQueue(1)
+    fun stepQueue(dir: Int) {
+        val s = _ui.value
+        val next = s.queueIndex + dir
+        if (s.queue.isEmpty() || next !in s.queue.indices) return
+        _ui.update { it.copy(queueIndex = next) }
+        openQueued(s.queue[next])
+    }
+
+    fun clearQueue() = _ui.update { it.copy(queue = emptyList(), queueIndex = -1) }
 
     override fun onCleared() {
         exportJob?.cancel()

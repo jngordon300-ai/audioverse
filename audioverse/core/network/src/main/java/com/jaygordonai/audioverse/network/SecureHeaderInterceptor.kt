@@ -20,16 +20,18 @@ class SecureHeaderInterceptor(
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val cfg = configProvider() ?: return chain.proceed(request)
-        if (!request.url.isHttps) return chain.proceed(request)
-
         val host = request.url.host
+        val privateHop = cfg.isPrivateJellyfinHost(host)
+        // HTTPS everywhere, except the saved private-network IP (home Wi-Fi / VPN mesh).
+        if (!request.url.isHttps && !privateHop) return chain.proceed(request)
+
         val builder = request.newBuilder()
 
-        if (cfg.hasCloudflare && host.equals(cfg.tunnelHost, ignoreCase = true)) {
+        if (cfg.hasCloudflare && request.url.isHttps && host.equals(cfg.tunnelHost, ignoreCase = true)) {
             builder.header("CF-Access-Client-Id", cfg.cfClientId!!)
             builder.header("CF-Access-Client-Secret", cfg.cfClientSecret!!)
         }
-        if (cfg.hasJellyfin && host.equals(cfg.jellyfinHost, ignoreCase = true)) {
+        if (cfg.hasJellyfin && (host.equals(cfg.jellyfinHost, ignoreCase = true) || privateHop)) {
             builder.header(
                 "Authorization",
                 "MediaBrowser Client=\"AudioVerse\", Device=\"Android\", " +
