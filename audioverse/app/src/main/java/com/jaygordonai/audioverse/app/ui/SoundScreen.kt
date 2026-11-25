@@ -45,6 +45,9 @@ fun SoundScreen(s: PlayerUi, vm: PlayerViewModel) {
         item {
             Text("Sound", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AV.Text, modifier = Modifier.padding(top = 16.dp))
             Text("Decode → Gain → Vocal → EQ → Mixer → Limiter → Buds", color = AV.TextMuted, fontSize = 12.sp)
+            androidx.compose.material3.TextButton(onClick = { vm.show(com.jaygordonai.audioverse.app.player.Screen.DIAGNOSTICS) }) {
+                Text("Engine tests ›", color = AV.Amber, fontSize = 13.sp)
+            }
         }
 
         item {
