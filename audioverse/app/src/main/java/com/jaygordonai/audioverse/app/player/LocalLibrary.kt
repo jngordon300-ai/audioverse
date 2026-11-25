@@ -14,7 +14,9 @@ data class Track(
     val artist: String,
     val album: String,
     val durationMs: Long,
-    val trackNumber: Int
+    val trackNumber: Int,
+    /** true for an internet radio station (no duration, no album art). */
+    val live: Boolean = false
 )
 
 /**
