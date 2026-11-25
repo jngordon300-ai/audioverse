@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV launcher banner (320x180): the launcher's amber "T" mark on the dark background. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp" android:height="180dp"
+    android:viewportWidth="320" android:viewportHeight="180">
+    <path android:fillColor="#100E0B" android:pathData="M0,0h320v180h-320z"/>
+    <path android:fillColor="#FF8C1A" android:pathData="M120,56h56v11h-22.5v57h-11v-57h-22.5z"/>
+    <path android:strokeColor="#FF8C1A" android:strokeWidth="5" android:fillColor="#00000000"
+        android:strokeLineCap="round" android:pathData="M166,86a20,20 0,0 1,0 28"/>
+    <path android:strokeColor="#FFB347" android:strokeWidth="5" android:fillColor="#00000000"
+        android:strokeLineCap="round" android:pathData="M175,77a32,32 0,0 1,0 46"/>
+</vector>

@@ -110,6 +110,7 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         sources = readSources()
+        seedPresets()
         publishSources()
         sources.firstOrNull()?.let { select(it.id) }
     }
@@ -123,6 +124,15 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
             IptvSource(o.getLong("id"), o.getString("name"), o.getString("link"), o.optBoolean("file"), o.optBoolean("inline"))
         }
     } catch (e: Exception) { emptyList() }
+
+    /** Adds the free public lists once. A removed preset stays removed (the flag survives clearAll). */
+    private fun seedPresets() {
+        if (store.get(K_SEEDED) != null) return
+        val have = sources.map { it.link }.toSet()
+        val add = IptvPresets.all.filter { it.url !in have }.map { IptvSource(it.id, it.name, it.url, isFile = false) }
+        if (add.isNotEmpty()) { sources = sources + add; writeSources() }
+        store.put(K_SEEDED, "1")
+    }
 
     private fun writeSources() {
         val arr = JSONArray()
@@ -247,7 +257,7 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
         }
         store.put(inlineKey(id), null)
         sources = sources.filterNot { it.id == id }
-        if (sources.isEmpty()) store.clearAll() else writeSources()
+        if (sources.isEmpty()) { store.clearAll(); store.put(K_SEEDED, "1") } else writeSources()
         publishSources()
         if (_ui.value.selectedId == id) {
             stop(); channels = emptyList()
@@ -397,6 +407,7 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val K_SOURCES = "sources"
+        const val K_SEEDED = "presets_seeded"
         const val UA = "AudioVerse/0.5 (Android)"
         const val UA_FALLBACK = "VLC/3.0.20 LibVLC/3.0.20"
         const val MAX_BYTES = 64L * 1024 * 1024
