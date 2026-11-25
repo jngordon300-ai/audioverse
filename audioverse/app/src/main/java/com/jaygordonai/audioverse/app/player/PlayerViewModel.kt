@@ -14,6 +14,19 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.jaygordonai.audioverse.app.PlayerHolder
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.database.ContentObserver
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.provider.MediaStore
+import androidx.core.content.ContextCompat
+import com.jaygordonai.audioverse.app.library.FolderInfo
+import com.jaygordonai.audioverse.app.library.FolderLibrary
+import com.jaygordonai.audioverse.app.library.FolderVideo
 import com.jaygordonai.audioverse.app.library.Playlist
 import com.jaygordonai.audioverse.app.library.PlaylistEntry
 import com.jaygordonai.audioverse.app.library.PlaylistOps
@@ -56,6 +69,13 @@ data class PlayerUi(
     val featured: List<String> = emptyList(),
     /** Song title from the station's stream (ICY), when it sends one. */
     val streamTitle: String? = null,
+    /** Picked folders (phone, SD, USB drives like a T5). */
+    val folders: List<FolderInfo> = emptyList(),
+    val folderVideos: List<FolderVideo> = emptyList(),
+    /** Progress text while a rescan runs. */
+    val scanning: String? = null,
+    /** Asks the Video tab to switch mode (e.g. "WATCH" when a video is opened from another app). */
+    val videoModeRequest: String? = null,
     val highlighted: Int = 0,
     val nowPlaying: Track? = null,
     val isPlaying: Boolean = false,
@@ -115,8 +135,30 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // Rescan when the phone's media index changes (e.g. a USB drive is plugged in and scanned).
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val rescanSoon = Runnable { loadLibrary() }
+    private fun scheduleRescan(delayMs: Long) { mainHandler.removeCallbacks(rescanSoon); mainHandler.postDelayed(rescanSoon, delayMs) }
+    private val mediaObserver = object : ContentObserver(mainHandler) {
+        override fun onChange(selfChange: Boolean) { if (_ui.value.scanning == null) scheduleRescan(4_000) }
+    }
+    private val mountReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context?, i: Intent?) { scheduleRescan(2_500) }
+    }
+
     init {
         ensureAttached()
+        try {
+            ctx.contentResolver.registerContentObserver(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL), true, mediaObserver)
+        } catch (_: Exception) { }
+        val mounts = IntentFilter().apply {
+            addAction(Intent.ACTION_MEDIA_MOUNTED); addAction(Intent.ACTION_MEDIA_UNMOUNTED)
+            addAction(Intent.ACTION_MEDIA_REMOVED); addAction(Intent.ACTION_MEDIA_EJECT)
+            addDataScheme("file")
+        }
+        // System broadcasts only; not exported to other apps.
+        ContextCompat.registerReceiver(ctx, mountReceiver, mounts, ContextCompat.RECEIVER_NOT_EXPORTED)
+        if (FolderLibrary.savedFolders(ctx).isNotEmpty()) loadLibrary()
         viewModelScope.launch {
             val cat = try { StationCatalog.load(ctx) } catch (e: Exception) { StationCatalog.Data(emptyList(), emptyList()) }
             val lists = PlaylistStore.load(ctx)
@@ -144,18 +186,55 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- Library ----------------
     fun onPermissionResult(granted: Boolean) {
+        val was = _ui.value.hasPermission
         _ui.update { it.copy(hasPermission = granted) }
-        if (granted && _ui.value.tracks.isEmpty()) loadLibrary()
+        if (granted && (!was || _ui.value.tracks.isEmpty())) loadLibrary()
     }
 
+    private var loadJob: kotlinx.coroutines.Job? = null
+
+    /** Phone library (MediaStore, includes drives Android has indexed) plus picked folders. */
     fun loadLibrary() {
-        _ui.update { it.copy(loading = true) }
-        viewModelScope.launch {
-            val tracks = try { LocalLibrary.load(ctx) } catch (e: SecurityException) { emptyList() }
-            _ui.update { it.copy(tracks = tracks, loading = false, highlighted = 0) }
+        loadJob?.cancel()
+        _ui.update { it.copy(loading = it.tracks.isEmpty(), scanning = "Scanning your library…") }
+        loadJob = viewModelScope.launch {
+            val phone = if (_ui.value.hasPermission) {
+                try { LocalLibrary.load(ctx) } catch (e: SecurityException) { emptyList() }
+            } else emptyList()
+            val folders = try {
+                FolderLibrary.scan(ctx) { msg -> _ui.update { it.copy(scanning = msg) } }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                com.jaygordonai.audioverse.app.library.FolderScan(emptyList(), emptyList(), emptyList())
+            }
+            val merged = FolderLibrary.mergeWith(phone, folders.tracks)
+            _ui.update {
+                it.copy(
+                    tracks = merged, loading = false, scanning = null,
+                    folders = folders.folders, folderVideos = folders.videos,
+                    highlighted = it.highlighted.coerceAtMost((merged.size - 1).coerceAtLeast(0))
+                )
+            }
             recompute()
         }
     }
+
+    fun rescan() = loadLibrary()
+
+    fun addFolder(tree: Uri) { FolderLibrary.addFolder(ctx, tree); loadLibrary() }
+    fun removeFolder(tree: String) { FolderLibrary.removeFolder(ctx, tree); loadLibrary() }
+
+    /** Plays one file another app asked AudioVerse to open (file manager, Downloads…). */
+    fun playExternal(uri: Uri, title: String) {
+        val t = Track(
+            id = FolderLibrary.trackId(uri.toString()), uri = uri, title = title.substringBeforeLast('.'),
+            artist = "Opened file", album = "", durationMs = 0, trackNumber = 0
+        )
+        playQueue(listOf(t), 0)
+    }
+
+    fun requestVideoMode(mode: String) = _ui.update { it.copy(screen = Screen.VIDEO, videoModeRequest = mode) }
+    fun consumeVideoModeRequest() = _ui.update { it.copy(videoModeRequest = null) }
 
     // ---------------- Library categories ----------------
     fun setLibTab(tab: LibTab) { _ui.update { it.copy(libTab = tab, group = null, highlighted = 0) }; recompute() }
@@ -375,5 +454,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun dismissError() = _ui.update { it.copy(error = null) }
 
-    override fun onCleared() { attached?.removeListener(listener) }
+    override fun onCleared() {
+        attached?.removeListener(listener)
+        mainHandler.removeCallbacks(rescanSoon)
+        try { ctx.contentResolver.unregisterContentObserver(mediaObserver) } catch (_: Exception) { }
+        try { ctx.unregisterReceiver(mountReceiver) } catch (_: Exception) { }
+    }
 }

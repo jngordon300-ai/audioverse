@@ -29,6 +29,10 @@
 | DJ decks (v0.6) | No new permissions or data. Decks use the same engine and network client as the player (credentials only go to the configured Jellyfin/Access host over HTTPS). Nothing about a mix is saved. Decks don't take audio focus, so a call or another app won't pause them automatically; they aren't on the lock screen, and the screen stays on while a deck plays. |
 | Hearing | Each deck is limited (−4 dBFS on Smooth, −7 dBFS on Scratch cut) so the summed mix stays below 0 dBFS; Android's own volume and hearing-safety warning still apply on top. |
 
+| Folders / USB drives (v0.7) | Read-only access to the folders you pick (system folder picker), nothing else on the drive or phone. No new storage or video permission. File names and tags are cached in `files/folder_tags.json` (app-private, not backed up). Removing a folder releases the access grant. |
+| Open with / share (v0.7) | AudioVerse accepts only local files (content:// and file://) for audio, video and M3U, and text shares. It never claims web links. Shared or opened M3U content and links are shown in a confirm dialog and saved only if you tap Import; the shared text stays in memory until then. Files opened this way use Android's temporary read grant. |
+| Pasted IPTV lists (v0.7) | Pasted M3U text or stream lists are stored encrypted with the IPTV Keystore key (capped at 1 MB) and deleted with Remove. The paste box uses a password keyboard so the keyboard doesn't learn the links. |
+
 ## Known follow-ups
 - Station `WHUR World (HD2)` uses the same stream URL as `WHUR 96.3` in the catalog; check the HD2 URL.
 - Pin GitHub Actions to commit SHAs once versions settle.

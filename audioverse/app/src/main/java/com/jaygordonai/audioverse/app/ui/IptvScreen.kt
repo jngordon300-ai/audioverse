@@ -79,6 +79,26 @@ fun IptvScreen(vm: IptvViewModel, full: Boolean, onFullscreen: (Boolean) -> Unit
         onDispose { lifecycle.removeObserver(obs); vm.onBackgrounded() }
     }
 
+    s.pendingImport?.let { p ->
+        AlertDialog(
+            onDismissRequest = { vm.confirmImport(false) },
+            title = { Text("Import IPTV links?") },
+            text = {
+                Text(
+                    "\"${p.name}\" has " + listOfNotNull(
+                        p.playlists.takeIf { it > 0 }?.let { "$it playlist link(s)" },
+                        p.channels.takeIf { it > 0 }?.let { "$it channel(s)" }
+                    ).joinToString(" and ") + ". Save them on this phone (encrypted)?"
+                )
+            },
+            confirmButton = { TextButton(onClick = { vm.confirmImport(true) }) { Text("Import") } },
+            dismissButton = { TextButton(onClick = { vm.confirmImport(false) }) { Text("Cancel") } }
+        )
+    }
+    s.notice?.let { n ->
+        androidx.compose.runtime.LaunchedEffect(n) { kotlinx.coroutines.delay(4_000); vm.clearNotice() }
+    }
+
     if (full && s.playing != null) {
         TvPlayer(vm, onFullscreen, Modifier.fillMaxSize().background(Color.Black))
         return
@@ -89,8 +109,8 @@ fun IptvScreen(vm: IptvViewModel, full: Boolean, onFullscreen: (Boolean) -> Unit
             Column(Modifier.weight(1f)) {
                 Text("TV", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AV.Text)
                 Text(
-                    if (s.sources.isEmpty()) "Your IPTV playlists (M3U)" else "${s.total} channels" + if (s.truncated) " (first ${M3uParser.DEFAULT_LIMIT})" else "",
-                    color = AV.TextMuted, fontSize = 13.sp
+                    s.notice ?: if (s.sources.isEmpty()) "Your IPTV playlists (M3U)" else "${s.total} channels" + if (s.truncated) " (first ${M3uParser.DEFAULT_LIMIT})" else "",
+                    color = if (s.notice != null) AV.Amber else AV.TextMuted, fontSize = 13.sp
                 )
             }
             if (s.sources.isNotEmpty()) TextButton(onClick = { adding = true }) { Text("+ Add", color = AV.Amber) }
@@ -205,6 +225,8 @@ private fun AddSourceCard(vm: IptvViewModel, onDone: () -> Unit, inDialog: Boole
     var link by remember { mutableStateOf("") }
     var show by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var pasting by remember { mutableStateOf(false) }
+    var pasted by remember { mutableStateOf("") }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { vm.addFile(it, displayName(context, it)); onDone() }
     }
@@ -239,7 +261,26 @@ private fun AddSourceCard(vm: IptvViewModel, onDone: () -> Unit, inDialog: Boole
             }) { Text("Save link") }
             OutlinedButton(onClick = {
                 pick.launch(arrayOf("audio/x-mpegurl", "audio/mpegurl", "application/x-mpegurl", "application/vnd.apple.mpegurl", "text/plain", "application/octet-stream"))
-            }) { Text("Pick M3U file", color = AV.Amber) }
+            }) { Text("Pick file", color = AV.Amber) }
+        }
+        TextButton(onClick = { pasting = !pasting }) {
+            Text(if (pasting) "Hide paste box" else "Paste a list (M3U text or several links)", color = AV.Amber, fontSize = 13.sp)
+        }
+        if (pasting) {
+            Text(
+                "Paste M3U text, or one link per line (optionally \"Name, link\"). Playlist links are saved one by one; single stream links become one channel list. " +
+                    "A .txt file of links works with Pick file too.",
+                color = AV.TextMuted, fontSize = 11.sp
+            )
+            OutlinedTextField(
+                value = pasted, onValueChange = { pasted = it.take(200_000) },
+                label = { Text("Paste here") }, minLines = 3, maxLines = 6, modifier = Modifier.fillMaxWidth(), colors = fieldColors(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+            )
+            Button(enabled = pasted.isNotBlank(), onClick = {
+                val msg = vm.importText(pasted, name.ifBlank { "Pasted list" })
+                if (!msg.startsWith("No ")) { pasted = ""; name = ""; pasting = false; onDone() } else error = msg
+            }) { Text("Import list") }
         }
     }
 }

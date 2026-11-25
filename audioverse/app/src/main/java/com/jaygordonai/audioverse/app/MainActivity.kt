@@ -2,6 +2,9 @@ package com.jaygordonai.audioverse.app
 
 import android.Manifest
 import android.content.ComponentName
+import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -39,12 +42,66 @@ class MainActivity : ComponentActivity() {
         ) {
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+        if (savedInstanceState == null) handleIntent(intent)
         setContent {
             AudioVerseTheme {
                 AudioVerseApp(playerVm, gateVm = { gateVm }, videoVm = { videoVm }, iptvVm = { iptvVm }, djVm = { djVm })
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    /**
+     * Files opened with AudioVerse from other apps (file manager, Downloads, a USB drive),
+     * and text shared to it. Music plays right away; videos open in Video → Watch;
+     * M3U files and shared links are only imported after the listener confirms.
+     */
+    private fun handleIntent(i: Intent?) {
+        if (i == null) return
+        try {
+            when (i.action) {
+                Intent.ACTION_VIEW -> {
+                    val uri = i.data ?: return
+                    if (uri.scheme != "content" && uri.scheme != "file") return
+                    val mime = (i.type ?: contentResolver.getType(uri) ?: "").lowercase()
+                    val name = displayName(uri) ?: uri.lastPathSegment?.substringAfterLast('/') ?: "File"
+                    val ext = name.substringAfterLast('.', "").lowercase()
+                    when {
+                        mime.contains("mpegurl") || ext == "m3u" || ext == "m3u8" -> {
+                            iptvVm.offerImportFrom(uri, name); playerVm.requestVideoMode("TV")
+                        }
+                        mime.startsWith("video/") -> {
+                            videoVm.open(uri); videoVm.player.play(); playerVm.requestVideoMode("WATCH")
+                        }
+                        else -> playerVm.playExternal(uri, name)
+                    }
+                }
+                Intent.ACTION_SEND -> {
+                    val text = i.getStringExtra(Intent.EXTRA_TEXT)
+                    @Suppress("DEPRECATION") val stream = i.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                    when {
+                        !text.isNullOrBlank() -> iptvVm.offerImport(text, i.getStringExtra(Intent.EXTRA_SUBJECT) ?: "Shared list")
+                        stream != null && stream.scheme == "content" -> iptvVm.offerImportFrom(stream, displayName(stream))
+                        else -> return
+                    }
+                    playerVm.requestVideoMode("TV")
+                }
+            }
+        } catch (_: Exception) {
+            // A bad or revoked link from another app must never crash AudioVerse.
+        }
+    }
+
+    private fun displayName(uri: Uri): String? = try {
+        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst()) c.getString(0) else null
+        }
+    } catch (e: Exception) { null }
 
     override fun onStart() {
         super.onStart()

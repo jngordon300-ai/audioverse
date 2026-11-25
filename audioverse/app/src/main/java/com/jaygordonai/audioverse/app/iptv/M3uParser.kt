@@ -113,3 +113,32 @@ object M3uParser {
         return -1
     }
 }
+
+/** How pasted or shared text is imported (pure, unit tested). */
+object IptvImport {
+    class Plan(val isM3u: Boolean, val playlistLinks: List<Pair<String, String>>, val streams: List<Pair<String, String>>)
+
+    fun looksLikePlaylist(text: String) = text.contains("#EXTINF", ignoreCase = true)
+
+    /** Provider playlist links (vs. single stream links). A bare .m3u8 is usually one HLS channel. */
+    fun isPlaylistLink(url: String): Boolean {
+        val u = url.lowercase()
+        val path = u.substringBefore('?')
+        return path.endsWith(".m3u") || u.contains("get.php") || u.contains("type=m3u") || u.contains("output=m3u")
+    }
+
+    /** M3U text stays one playlist; otherwise each line's link is a playlist link or a single stream ("Name, link" allowed). */
+    fun plan(text: String): Plan {
+        if (looksLikePlaylist(text)) return Plan(true, emptyList(), emptyList())
+        val links = ArrayList<Pair<String, String>>()
+        val streams = ArrayList<Pair<String, String>>()
+        text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }.forEach { line ->
+            val at = maxOf(line.lastIndexOf("http://", ignoreCase = true), line.lastIndexOf("https://", ignoreCase = true))
+            if (at < 0) return@forEach
+            val url = line.substring(at).substringBefore(' ').trim()
+            val label = line.substring(0, at).trim().trim(',', '|', ';', '-', ':', '\t', ' ').take(30)
+            if (isPlaylistLink(url)) links += label to url else streams += label to url
+        }
+        return Plan(false, links, streams)
+    }
+}

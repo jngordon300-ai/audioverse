@@ -68,10 +68,13 @@ import com.jaygordonai.audioverse.app.video.VideoEditorViewModel
 
 /** Video tab: Watch (Music TV + phone videos), TV (IPTV / M3U) or Edit (the cut editor). */
 @Composable
-fun VideoHub(s: PlayerUi, vm: VideoEditorViewModel, iptv: IptvViewModel, onImmersive: (Boolean) -> Unit) {
+fun VideoHub(s: PlayerUi, vm: VideoEditorViewModel, iptv: IptvViewModel, onImmersive: (Boolean) -> Unit, onModeHandled: () -> Unit = {}) {
     val activity = LocalContext.current as? Activity
     var mode by rememberSaveable { mutableStateOf("WATCH") }
     var tvFull by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(s.videoModeRequest) {
+        s.videoModeRequest?.let { mode = it; onModeHandled() }
+    }
     // Only the TV mode drives full screen from here; Watch manages its own.
     LaunchedEffect(tvFull) {
         if (mode == "TV") {
@@ -185,6 +188,23 @@ private fun WatchScreen(s: PlayerUi, vm: VideoEditorViewModel, onImmersive: (Boo
                     Text("Play a video from your phone", color = AV.Text, fontWeight = FontWeight.SemiBold)
                     Text("You pick one file at a time. AudioVerse can't see your other videos or photos.", color = AV.TextMuted, fontSize = 12.sp)
                     Button(onClick = { pick.launch(arrayOf("video/*")) }) { Text(if (v.uri == null) "Open a video" else "Open another") }
+                }
+            }
+
+            if (s.folderVideos.isNotEmpty()) {
+                item { SectionTitle("Videos from your folders (${s.folderVideos.size})") }
+                items(s.folderVideos, key = { "fv:" + it.uri }) { fv ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (v.uri == fv.uri) AV.SurfaceHigh else AV.Ground)
+                            .clickable { channel = null; vm.open(fv.uri); vm.player.play() }.padding(horizontal = 10.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(fv.name, color = if (v.uri == fv.uri) AV.Amber else AV.Text, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(fv.folder, color = AV.TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Text("PLAY", color = AV.Amber, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
 

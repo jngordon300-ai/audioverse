@@ -110,7 +110,7 @@ fun AudioVerseApp(
                     Screen.RADIO -> RadioScreen(s, vm)
                     Screen.NOW_PLAYING -> NowPlayingScreen(s, vm)
                     Screen.DJ -> DjScreen(s, djVm())
-                    Screen.VIDEO -> VideoHub(s, videoVm(), iptvVm(), onImmersive = { immersive = it })
+                    Screen.VIDEO -> VideoHub(s, videoVm(), iptvVm(), onImmersive = { immersive = it }, onModeHandled = vm::consumeVideoModeRequest)
                     Screen.SOUND -> SoundScreen(s, vm)
                     Screen.DIAGNOSTICS -> ValuesTheme { GateScreen(gateVm()) }
                 }
@@ -188,12 +188,18 @@ private fun AddToPlaylistDialog(t: com.jaygordonai.audioverse.app.player.Track, 
 @Composable
 private fun LibraryScreen(s: PlayerUi, vm: PlayerViewModel, onGrant: () -> Unit) {
     var creating by remember { mutableStateOf(false) }
+    var managingFolders by remember { mutableStateOf(false) }
     val openPlaylist = if (s.libTab == LibTab.PLAYLISTS) s.group?.toLongOrNull()?.let { id -> s.playlists.firstOrNull { it.id == id } } else null
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        Text("Library", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AV.Text, modifier = Modifier.padding(top = 16.dp))
+        Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Library", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AV.Text, modifier = Modifier.weight(1f))
+            TextButton(onClick = vm::rescan, enabled = s.scanning == null) { Text("Rescan", color = AV.Amber) }
+            TextButton(onClick = { managingFolders = true }) { Text("Folders", color = AV.Amber) }
+        }
         Text(
-            if (s.tracks.isEmpty()) "Your music, playlists and saved stations" else "${s.tracks.size} tracks on this phone · ${s.playlists.size} playlists",
-            color = AV.TextMuted, fontSize = 13.sp
+            s.scanning ?: if (s.tracks.isEmpty()) "Your music, playlists and saved stations"
+            else "${s.tracks.size} tracks" + (if (s.folders.isNotEmpty()) " · ${s.folders.size} folders" else "") + " · ${s.playlists.size} playlists",
+            color = if (s.scanning != null) AV.Amber else AV.TextMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
         )
         Spacer(Modifier.height(10.dp))
         ChipRow(LibTab.entries.map { it.name to it.label }, s.libTab.name) { vm.setLibTab(LibTab.valueOf(it)) }
@@ -212,7 +218,10 @@ private fun LibraryScreen(s: PlayerUi, vm: PlayerViewModel, onGrant: () -> Unit)
 
         val needsLibrary = s.libTab != LibTab.PLAYLISTS
         when {
-            needsLibrary && !s.hasPermission -> PermissionCard(onGrant)
+            needsLibrary && !s.hasPermission && s.tracks.isEmpty() -> Column {
+                PermissionCard(onGrant)
+                TextButton(onClick = { managingFolders = true }) { Text("Or add a folder / USB drive instead", color = AV.Amber) }
+            }
             needsLibrary && s.loading -> Text("Reading your library…", color = AV.TextMuted)
             s.libTab != LibTab.SONGS && s.group == null -> {
                 LazyColumn(Modifier.weight(1f)) {
@@ -267,6 +276,7 @@ private fun LibraryScreen(s: PlayerUi, vm: PlayerViewModel, onGrant: () -> Unit)
             }
         }
     }
+    if (managingFolders) FoldersDialog(s, vm, onClose = { managingFolders = false })
     if (creating) {
         var name by remember { mutableStateOf("") }
         AlertDialog(
@@ -279,6 +289,41 @@ private fun LibraryScreen(s: PlayerUi, vm: PlayerViewModel, onGrant: () -> Unit)
             dismissButton = { TextButton(onClick = { creating = false }) { Text("Cancel") } }
         )
     }
+}
+
+/** Folders from the phone, an SD card or a USB drive (e.g. a Samsung T5), picked one at a time. */
+@Composable
+private fun FoldersDialog(s: PlayerUi, vm: PlayerViewModel, onClose: () -> Unit) {
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> uri?.let(vm::addFolder) }
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("Music & video folders") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "Plug in your drive, tap Add folder and choose its Music (or any) folder. AudioVerse reads only the folders you pick, " +
+                        "finds songs (MP3, FLAC, Opus, M4A, WAV…) and videos, and rescans when a drive is plugged in.",
+                    color = AV.TextMuted, fontSize = 12.sp
+                )
+                if (s.folders.isEmpty()) Text("No folders yet.", color = AV.TextMuted, fontSize = 13.sp)
+                s.folders.forEach { f ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(f.name, color = AV.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                if (f.connected) "${f.tracks} songs · ${f.videos} videos" else "Not connected: plug the drive in, then Rescan",
+                                color = if (f.connected) AV.TextMuted else AV.Warn, fontSize = 11.sp
+                            )
+                        }
+                        SmallText("✕") { vm.removeFolder(f.uri) }
+                    }
+                }
+                s.scanning?.let { Text(it, color = AV.Amber, fontSize = 12.sp) }
+            }
+        },
+        confirmButton = { TextButton(onClick = { pickFolder.launch(null) }) { Text("+ Add folder") } },
+        dismissButton = { TextButton(onClick = onClose) { Text("Done") } }
+    )
 }
 
 @Composable

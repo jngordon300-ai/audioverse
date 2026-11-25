@@ -36,7 +36,7 @@ import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 /** A saved playlist. [link] is the M3U URL (with the login in it) or a content:// file. */
-private data class IptvSource(val id: Long, val name: String, val link: String, val isFile: Boolean) {
+private data class IptvSource(val id: Long, val name: String, val link: String, val isFile: Boolean, val inline: Boolean = false) {
     override fun toString(): String = "IptvSource($id, $name)" // never the link
 }
 
@@ -59,8 +59,13 @@ data class IptvUi(
     val playing: IptvChannel? = null,
     val isPlaying: Boolean = false,
     val buffering: Boolean = false,
-    val playError: String? = null
+    val playError: String? = null,
+    /** Text shared or opened from another app, waiting for the listener to confirm the import. Memory only. */
+    val pendingImport: PendingImport? = null,
+    val notice: String? = null
 )
+
+data class PendingImport(val text: String, val name: String, val playlists: Int, val channels: Int)
 
 /**
  * IPTV: M3U playlists (a link from the provider, or a file on the phone).
@@ -115,18 +120,18 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
         val arr = JSONArray(store.get(K_SOURCES) ?: "[]")
         List(arr.length()) { i ->
             val o = arr.getJSONObject(i)
-            IptvSource(o.getLong("id"), o.getString("name"), o.getString("link"), o.optBoolean("file"))
+            IptvSource(o.getLong("id"), o.getString("name"), o.getString("link"), o.optBoolean("file"), o.optBoolean("inline"))
         }
     } catch (e: Exception) { emptyList() }
 
     private fun writeSources() {
         val arr = JSONArray()
-        sources.forEach { arr.put(JSONObject().put("id", it.id).put("name", it.name).put("link", it.link).put("file", it.isFile)) }
+        sources.forEach { arr.put(JSONObject().put("id", it.id).put("name", it.name).put("link", it.link).put("file", it.isFile).put("inline", it.inline)) }
         store.put(K_SOURCES, arr.toString())
     }
 
     private fun publishSources() = _ui.update { s ->
-        s.copy(sources = sources.map { SourceInfo(it.id, it.name, it.isFile, !it.isFile && M3uParser.isPlainHttp(it.link)) })
+        s.copy(sources = sources.map { SourceInfo(it.id, it.name, it.isFile || it.inline, !it.isFile && !it.inline && M3uParser.isPlainHttp(it.link)) })
     }
 
     /** Returns an error to show, or null when saved. The link is never echoed back. */
@@ -139,12 +144,96 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
         return null
     }
 
+    /** Picked .m3u or .txt: a playlist stays linked to the file; a list of links is imported. */
     fun addFile(uri: Uri, displayName: String?) {
-        try { ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: SecurityException) { }
-        val src = IptvSource(System.currentTimeMillis(), (displayName ?: "M3U file").removeSuffix(".m3u").removeSuffix(".m3u8").take(30), uri.toString(), isFile = true)
-        sources = sources + src
-        writeSources(); publishSources(); select(src.id)
+        val name = cleanName(displayName ?: "M3U file")
+        viewModelScope.launch {
+            val text = withContext(Dispatchers.IO) { readUpTo(uri) } ?: run { _ui.update { it.copy(notice = "Couldn't read that file") }; return@launch }
+            if (IptvImport.looksLikePlaylist(text)) {
+                val persisted = try {
+                    ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); true
+                } catch (_: SecurityException) { false }
+                if (persisted) {
+                    val src = IptvSource(System.currentTimeMillis(), name, uri.toString(), isFile = true)
+                    sources = sources + src
+                    writeSources(); publishSources(); select(src.id)
+                } else importText(text, name)
+            } else importText(text, name)
+        }
     }
+
+    /** A file or text handed over by another app (open-with or share). Asks before saving anything. */
+    fun offerImport(text: String?, displayName: String?) {
+        if (text.isNullOrBlank()) return
+        val plan = IptvImport.plan(text)
+        if (plan.playlistLinks.isEmpty() && plan.streams.isEmpty() && !plan.isM3u) {
+            _ui.update { it.copy(notice = "No IPTV links found in what was shared") }; return
+        }
+        val channels = if (plan.isM3u) M3uParser.parse(text.lineSequence()).channels.size else plan.streams.size
+        _ui.update { it.copy(pendingImport = PendingImport(text, cleanName(displayName ?: "Shared list"), plan.playlistLinks.size, channels)) }
+    }
+
+    fun offerImportFrom(uri: Uri, displayName: String?) {
+        viewModelScope.launch { offerImport(withContext(Dispatchers.IO) { readUpTo(uri) }, displayName) }
+    }
+
+    fun confirmImport(accept: Boolean) {
+        val p = _ui.value.pendingImport ?: return
+        _ui.update { it.copy(pendingImport = null) }
+        if (accept) importText(p.text, p.name)
+    }
+
+    fun clearNotice() = _ui.update { it.copy(notice = null) }
+
+    /** Imports pasted or shared text. Returns a short summary (never the links). */
+    fun importText(text: String, baseName: String = "Pasted list"): String {
+        val name = cleanName(baseName)
+        val plan = IptvImport.plan(text)
+        var added = 0
+        var lastId: Long? = null
+        var id = System.currentTimeMillis()
+        fun inline(n: String, content: String) {
+            val src = IptvSource(id++, n, "", isFile = false, inline = true)
+            store.put(inlineKey(src.id), content.take(MAX_INLINE))
+            sources = sources + src; lastId = src.id; added++
+        }
+        if (plan.isM3u) inline(name, text)
+        plan.playlistLinks.forEachIndexed { i, (label, url) ->
+            val src = IptvSource(id++, label.ifEmpty { if (plan.playlistLinks.size == 1) name else "$name ${i + 1}" }.take(30), url, isFile = false)
+            sources = sources + src; lastId = src.id; added++
+        }
+        if (plan.streams.isNotEmpty()) {
+            val m3u = buildString {
+                append("#EXTM3U\n")
+                plan.streams.forEachIndexed { i, (label, url) -> append("#EXTINF:-1,").append(label.ifEmpty { "Channel ${i + 1}" }).append('\n').append(url).append('\n') }
+            }
+            inline(if (plan.playlistLinks.isEmpty()) name else "$name (channels)", m3u)
+        }
+        val msg = when {
+            added == 0 -> "No IPTV links found"
+            plan.isM3u -> "Added playlist \"$name\""
+            else -> listOfNotNull(
+                plan.playlistLinks.size.takeIf { it > 0 }?.let { "$it playlist link" + if (it > 1) "s" else "" },
+                plan.streams.size.takeIf { it > 0 }?.let { "$it channel" + if (it > 1) "s" else "" }
+            ).joinToString(" and ", prefix = "Added ")
+        }
+        if (added > 0) { writeSources(); publishSources(); lastId?.let { select(it) } }
+        _ui.update { it.copy(notice = msg) }
+        return msg
+    }
+
+    private fun cleanName(n: String) = n.substringAfterLast('/').removeSuffix(".m3u").removeSuffix(".m3u8").removeSuffix(".txt").trim().take(30).ifEmpty { "My IPTV" }
+
+    private fun readUpTo(uri: Uri): String? = try {
+        ctx.contentResolver.openInputStream(uri)?.use { input ->
+            val buf = ByteArray(MAX_INLINE); var n = 0
+            while (n < buf.size) { val r = input.read(buf, n, buf.size - n); if (r < 0) break; n += r }
+            String(buf, 0, n, Charsets.UTF_8)
+        }
+    } catch (e: Exception) { null }
+
+    private fun inlineKey(id: Long) = "inline_$id"
+
 
     fun rename(id: Long, name: String) {
         val n = name.trim().take(30).ifEmpty { return }
@@ -156,6 +245,7 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
         sources.firstOrNull { it.id == id }?.takeIf { it.isFile }?.let {
             try { ctx.contentResolver.releasePersistableUriPermission(Uri.parse(it.link), Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) { }
         }
+        store.put(inlineKey(id), null)
         sources = sources.filterNot { it.id == id }
         if (sources.isEmpty()) store.clearAll() else writeSources()
         publishSources()
@@ -174,7 +264,13 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update { it.copy(selectedId = id, loading = true, error = null, group = null, query = "") }
         loadJob = viewModelScope.launch {
             val result = try {
-                withContext(Dispatchers.IO) { if (src.isFile) readFile(src) else fetch(src) }
+                withContext(Dispatchers.IO) {
+                    when {
+                        src.inline -> M3uParser.parse((store.get(inlineKey(src.id)) ?: "").lineSequence())
+                        src.isFile -> readFile(src)
+                        else -> fetch(src)
+                    }
+                }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 _ui.update { it.copy(loading = false, error = describe(e)) }
@@ -304,5 +400,7 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
         const val UA = "AudioVerse/0.5 (Android)"
         const val UA_FALLBACK = "VLC/3.0.20 LibVLC/3.0.20"
         const val MAX_BYTES = 64L * 1024 * 1024
+        /** Pasted / shared lists are kept encrypted in prefs, so they're capped at 1 MB. */
+        const val MAX_INLINE = 1024 * 1024
     }
 }
