@@ -1,0 +1,11 @@
+{
+  // Cloudflare Workers Builds: serves ONLY the static browser edition (web/public).
+  // No Worker script, no secrets, no bindings. Council ruling U11 (2026-11-26).
+  // "name" must match the Worker connected to this repo in the Cloudflare dashboard.
+  "name": "audioverse",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./web/public",
+    "not_found_handling": "single-page-application"
+  }
+}

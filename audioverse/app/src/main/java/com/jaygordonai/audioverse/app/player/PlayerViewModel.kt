@@ -168,6 +168,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
         // System broadcasts only; not exported to other apps.
         ContextCompat.registerReceiver(ctx, mountReceiver, mounts, ContextCompat.RECEIVER_NOT_EXPORTED)
+        watchNetwork()
         if (FolderLibrary.savedFolders(ctx).isNotEmpty() || HomeServer.isConfigured(ctx)) loadLibrary()
         viewModelScope.launch {
             val cat = try { StationCatalog.load(ctx) } catch (e: Exception) { StationCatalog.Data(emptyList(), emptyList()) }
@@ -229,7 +230,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 it.copy(
                     tracks = merged, loading = false, scanning = null,
                     folders = folders.folders, folderVideos = folders.videos,
-                    server = server?.status ?: ServerStatus(), serverVideos = server?.videos ?: emptyList(),
+                    server = server?.status ?: ServerStatus(trustHomeWifi = com.jaygordonai.audioverse.network.PrivateTransportPolicy.trustHomeWifi), serverVideos = server?.videos ?: emptyList(),
                     highlighted = it.highlighted.coerceAtMost((merged.size - 1).coerceAtLeast(0))
                 )
             }
@@ -254,10 +255,35 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun disconnectServer() {
         viewModelScope.launch {
             HomeServer.disconnect(ctx)
-            _ui.update { it.copy(server = ServerStatus(), serverVideos = emptyList()) }
+            _ui.update { it.copy(server = ServerStatus(trustHomeWifi = com.jaygordonai.audioverse.network.PrivateTransportPolicy.trustHomeWifi), serverVideos = emptyList()) }
             loadLibrary()
         }
     }
+
+    // Keeps the http-token policy (VPN / Wi-Fi) and the mobile-data saver current.
+    private var netCallback: android.net.ConnectivityManager.NetworkCallback? = null
+    private fun watchNetwork() {
+        HomeServer.loadTrust(ctx)
+        val cm = ctx.getSystemService(android.net.ConnectivityManager::class.java) ?: return
+        val cb = object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onCapabilitiesChanged(network: android.net.Network, caps: android.net.NetworkCapabilities) {
+                val wasVpn = com.jaygordonai.audioverse.network.PrivateTransportPolicy.vpnActive
+                com.jaygordonai.audioverse.network.PrivateTransportPolicy.vpnActive = caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)
+                com.jaygordonai.audioverse.network.PrivateTransportPolicy.onWifi = caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)
+                HomeServer.metered = !caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                // VPN just came up and the server wasn't reachable: try again.
+                if (!wasVpn && com.jaygordonai.audioverse.network.PrivateTransportPolicy.vpnActive && _ui.value.server.error != null) mainHandler.post { scheduleRescan(1_500) }
+            }
+            override fun onLost(network: android.net.Network) {
+                com.jaygordonai.audioverse.network.PrivateTransportPolicy.vpnActive = false
+                com.jaygordonai.audioverse.network.PrivateTransportPolicy.onWifi = false
+            }
+        }
+        try { cm.registerDefaultNetworkCallback(cb); netCallback = cb } catch (_: Exception) { }
+    }
+
+    fun setServerAutoSaver(on: Boolean) { HomeServer.setAutoSaver(ctx, on); _ui.update { it.copy(server = it.server.copy(autoSaver = on)) } }
+    fun setTrustHomeWifi(on: Boolean) { HomeServer.setTrustHomeWifi(ctx, on); _ui.update { it.copy(server = it.server.copy(trustHomeWifi = on)) } }
 
     fun setServerDataSaver(on: Boolean) {
         HomeServer.setDataSaver(ctx, on)
@@ -538,5 +564,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         mainHandler.removeCallbacks(rescanSoon)
         try { ctx.contentResolver.unregisterContentObserver(mediaObserver) } catch (_: Exception) { }
         try { ctx.unregisterReceiver(mountReceiver) } catch (_: Exception) { }
+        netCallback?.let { cb -> try { ctx.getSystemService(android.net.ConnectivityManager::class.java)?.unregisterNetworkCallback(cb) } catch (_: Exception) { } }
     }
 }

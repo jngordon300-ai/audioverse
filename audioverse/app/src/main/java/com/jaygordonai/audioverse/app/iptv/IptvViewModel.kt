@@ -83,6 +83,8 @@ data class IptvUi(
     val pendingImport: PendingImport? = null,
     /** Adult groups (e.g. XXX in the worldwide list) are hidden unless switched on. */
     val showAdult: Boolean = false,
+    /** Council ruling C5: the built-in third-party lists are off until the listener turns them on. */
+    val freeListsOn: Boolean = false,
     val hiddenAdult: Int = 0,
     val notice: String? = null
 )
@@ -132,11 +134,22 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
 
     private val settings = app.getSharedPreferences("audioverse_iptv_settings", android.content.Context.MODE_PRIVATE)
     private val presetSources = IptvPresets.all.map { IptvSource(it.id, it.name, it.url, isFile = false) }
-    private fun allSources() = sources + presetSources
+    private fun freeOn() = settings.getBoolean("free_lists", false)
+    private fun allSources() = sources + if (freeOn()) presetSources else emptyList()
+
+    fun setFreeLists(on: Boolean) {
+        settings.edit().putBoolean("free_lists", on).apply()
+        _ui.update { it.copy(freeListsOn = on) }
+        publishSources()
+        if (!on && (_ui.value.selectedId ?: 0) < 0) {
+            stop(); channels = emptyList()
+            _ui.update { it.copy(selectedId = null, total = 0, groups = emptyList(), visible = emptyList(), group = null, error = null) }
+        }
+    }
 
     init {
         sources = readSources()
-        _ui.update { it.copy(showAdult = settings.getBoolean("show_adult", false)) }
+        _ui.update { it.copy(showAdult = settings.getBoolean("show_adult", false), freeListsOn = freeOn()) }
         publishSources()
         sources.firstOrNull()?.let { select(it.id) }
     }
@@ -165,7 +178,7 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun publishSources() = _ui.update { s ->
         s.copy(sources = sources.map { SourceInfo(it.id, it.name, it.isFile || it.inline, !it.isFile && !it.inline && M3uParser.isPlainHttp(it.link)) } +
-            presetSources.map { SourceInfo(it.id, it.name, isFile = false, plainHttp = false, preset = true) })
+            (if (freeOn()) presetSources else emptyList()).map { SourceInfo(it.id, it.name, isFile = false, plainHttp = false, preset = true) })
     }
 
     /** Returns an error to show, or null when saved. The link is never echoed back. */

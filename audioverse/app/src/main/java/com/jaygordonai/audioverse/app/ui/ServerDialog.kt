@@ -79,6 +79,24 @@ fun ServerDialog(s: PlayerUi, vm: PlayerViewModel, onClose: () -> Unit) {
                         color = AV.TextMuted, fontSize = 12.sp
                     )
                 }
+                if (st.configured) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Auto Data saver on mobile data", color = AV.Text)
+                        Text("Original quality on Wi-Fi; smaller streams on cellular.", color = AV.TextMuted, fontSize = 11.sp)
+                    }
+                    Switch(st.autoSaver, vm::setServerAutoSaver, colors = SwitchDefaults.colors(checkedTrackColor = AV.Amber))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Trusted home Wi-Fi", color = AV.Text)
+                        Text(
+                            "Off (safer): the home http address is used only while your VPN is on. On: also on any Wi-Fi. " +
+                                "Only turn on if you use the home address without a VPN, and never on public Wi-Fi.",
+                            color = if (st.trustHomeWifi) AV.Warn else AV.TextMuted, fontSize = 11.sp
+                        )
+                    }
+                    Switch(st.trustHomeWifi, vm::setTrustHomeWifi, colors = SwitchDefaults.colors(checkedTrackColor = AV.Amber))
+                }
                 if (editing) {
                     Text("Addresses (fill one or both)", color = AV.Text, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                     OutlinedTextField(home, { home = it.trim() }, singleLine = true, label = { Text("Home / VPN: http://100.x.x.x:8096") }, modifier = Modifier.fillMaxWidth(),

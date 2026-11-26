@@ -74,7 +74,7 @@ class VideoEditorViewModel(app: Application) : AndroidViewModel(app) {
     // Handles audio focus, so starting a video pauses music or radio (and the reverse).
     /** Home-server videos need the Jellyfin / Access headers; phone files go through the content resolver as before. */
     private val http = okhttp3.OkHttpClient.Builder()
-        .addNetworkInterceptor(com.jaygordonai.audioverse.network.SecureHeaderInterceptor { com.jaygordonai.audioverse.app.PlayerHolder.auth })
+        .addNetworkInterceptor(com.jaygordonai.audioverse.network.SecureHeaderInterceptor({ com.jaygordonai.audioverse.app.PlayerHolder.auth }))
         .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS).readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 

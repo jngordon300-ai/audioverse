@@ -29,6 +29,8 @@ data class ServerStatus(
     val songs: Int = 0,
     val videos: Int = 0,
     val dataSaver: Boolean = false,
+    val autoSaver: Boolean = true,
+    val trustHomeWifi: Boolean = false,
     val homeAddress: String = "",      // shown so you can edit it (no login inside)
     val remoteAddress: String = ""
 )
@@ -52,13 +54,17 @@ object HomeServer {
     @Volatile var base: String? = null; private set
     @Volatile private var userId: String? = null
     @Volatile var dataSaver: Boolean = false; private set
+    /** Chair ruling: original quality on Wi-Fi / VPN, Data saver by itself on mobile data. */
+    @Volatile var autoSaver: Boolean = true; private set
+    @Volatile var metered: Boolean = false
+    val effectiveSaver: Boolean get() = dataSaver || (autoSaver && metered)
 
     private fun prefs(c: Context) = SecretPrefs(c, "audioverse_server", "audioverse_server_v1")
 
     private val plain = OkHttpClient.Builder().connectTimeout(3, TimeUnit.SECONDS).readTimeout(5, TimeUnit.SECONDS).build()
     private val api: OkHttpClient by lazy {
         OkHttpClient.Builder()
-            .addNetworkInterceptor(SecureHeaderInterceptor { PlayerHolder.auth })
+            .addNetworkInterceptor(SecureHeaderInterceptor({ PlayerHolder.auth }))
             .connectTimeout(8, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS)
             .build()
     }
@@ -68,6 +74,19 @@ object HomeServer {
     fun isConfigured(c: Context): Boolean = prefs(c).get("server_id") != null && PlayerHolder.auth?.hasJellyfin == true
 
     fun setDataSaver(c: Context, on: Boolean) { dataSaver = on; prefs(c).put("saver", if (on) "1" else null) }
+    fun setAutoSaver(c: Context, on: Boolean) { autoSaver = on; prefs(c).put("auto_saver", if (on) null else "0") }
+
+    // ---------------- Trusted home Wi-Fi (U26) ----------------
+    private fun settings(c: Context) = c.applicationContext.getSharedPreferences("audioverse_server_settings", Context.MODE_PRIVATE)
+    fun loadTrust(c: Context) { com.jaygordonai.audioverse.network.PrivateTransportPolicy.trustHomeWifi = settings(c).getBoolean("trust_wifi", false) }
+    fun setTrustHomeWifi(c: Context, on: Boolean) {
+        settings(c).edit().putBoolean("trust_wifi", on).apply()
+        com.jaygordonai.audioverse.network.PrivateTransportPolicy.trustHomeWifi = on
+    }
+
+    /** A plain-http home address may only be used while the transport policy allows it. */
+    private fun homeUsable(home: String?): Boolean =
+        home != null && (home.startsWith("https://") || com.jaygordonai.audioverse.network.PrivateTransportPolicy.plainHttpAllowed())
 
     // ---------------- Links ----------------
 
@@ -78,10 +97,10 @@ object HomeServer {
         val id = uri.lastPathSegment ?: return uri
         val dev = PlayerHolder.auth?.deviceId ?: "audioverse"
         val s = if (uri.host == "video") {
-            if (dataSaver) "$b/Videos/$id/master.m3u8?MediaSourceId=$id&DeviceId=$dev&VideoCodec=h264&AudioCodec=aac&MaxStreamingBitrate=4000000&TranscodingMaxAudioChannels=2"
+            if (effectiveSaver) "$b/Videos/$id/master.m3u8?MediaSourceId=$id&DeviceId=$dev&VideoCodec=h264&AudioCodec=aac&MaxStreamingBitrate=4000000&TranscodingMaxAudioChannels=2"
             else "$b/Videos/$id/stream?static=true"
         } else {
-            if (dataSaver) "$b/Audio/$id/universal?UserId=${userId.orEmpty()}&DeviceId=$dev&Container=mp3&TranscodingContainer=mp3&TranscodingProtocol=http&AudioCodec=mp3&MaxStreamingBitrate=192000"
+            if (effectiveSaver) "$b/Audio/$id/universal?UserId=${userId.orEmpty()}&DeviceId=$dev&Container=mp3&TranscodingContainer=mp3&TranscodingProtocol=http&AudioCodec=mp3&MaxStreamingBitrate=192000"
             else "$b/Audio/$id/stream?static=true"
         }
         return Uri.parse(s)
@@ -114,10 +133,14 @@ object HomeServer {
             jellyfinHost = remoteUrl?.let(::host), tunnelHost = remoteUrl?.let(::host),
             cfClientId = newCf, cfClientSecret = newSecret, privateHost = homeUrl?.let(::host)
         ))
+        if (remoteUrl == null && homeUrl != null && !homeUsable(homeUrl))
+            return@withContext "To sign in over the home address, turn on your VPN, or switch on Trusted home Wi-Fi while on your home network"
         val base = pickBase(c, homeUrl, remoteUrl, expectId = null) ?: return@withContext "Can't reach the server on either address"
         val dev = PlayerHolder.auth?.deviceId ?: "audioverse"
         val req = Request.Builder().url("$base/Users/AuthenticateByName")
-            .header("Authorization", "MediaBrowser Client=\"AudioVerse\", Device=\"Android\", DeviceId=\"$dev\", Version=\"0.9\"")
+            .header("Authorization", "MediaBrowser Client=\"AudioVerse\", Device=\"Android\", DeviceId=\"$dev\", Version=\"0.12\"")
+            // Emby reads its own header name for the same client details.
+            .header("X-Emby-Authorization", "Emby Client=\"AudioVerse\", Device=\"Android\", DeviceId=\"$dev\", Version=\"0.12\"")
             .post(JSONObject().put("Username", user.trim()).put("Pw", password).toString().toRequestBody("application/json".toMediaType()))
             .build()
         val body = try {
@@ -158,7 +181,7 @@ object HomeServer {
                 if (!r.isSuccessful) null else JSONObject(r.body?.string() ?: "{}").optString("Id")
             }
         } catch (e: Exception) { null }
-        if (home != null) {
+        if (home != null && homeUsable(home)) {
             val id = probe(home, viaPlain = true) // no headers at all on the identity check
             if (id != null && (expectId == null || id == expectId)) return home
         }
@@ -175,13 +198,17 @@ object HomeServer {
         val p = prefs(c)
         val serverId = p.get("server_id") ?: return@withContext null
         dataSaver = p.get("saver") == "1"
+        autoSaver = p.get("auto_saver") != "0"
         val home = p.get("home"); val remote = p.get("remote")
-        val status = ServerStatus(configured = true, dataSaver = dataSaver, homeAddress = home.orEmpty(), remoteAddress = remote.orEmpty())
+        val status = ServerStatus(configured = true, dataSaver = dataSaver, autoSaver = autoSaver,
+            trustHomeWifi = com.jaygordonai.audioverse.network.PrivateTransportPolicy.trustHomeWifi, homeAddress = home.orEmpty(), remoteAddress = remote.orEmpty())
         if (PlayerHolder.auth?.hasJellyfin != true) return@withContext ServerLibrary(emptyList(), emptyList(), status.copy(error = "Signed out. Connect again."))
         onProgress("Looking for your home server…")
         val b = pickBase(c, home, remote, serverId)
         base = b; userId = p.get("user_id")
-        if (b == null) return@withContext ServerLibrary(emptyList(), emptyList(), status.copy(error = "Server not reachable. At home: is the Mac Mini on? Away: is the VPN on, or is Cloudflare set up?"))
+        if (b == null) return@withContext ServerLibrary(emptyList(), emptyList(), status.copy(error =
+            if (home != null && !homeUsable(home) && remote == null) "Home address needs your VPN on (or Trusted home Wi-Fi switched on)"
+            else "Server not reachable. At home: is the Mac Mini on? Away: is the VPN on, or is Cloudflare set up?"))
         val via = if (b == home) "home network / VPN" else "Cloudflare"
         try {
             val name = api.newCall(Request.Builder().url("$b/System/Info/Public").build()).execute().use { JSONObject(it.body?.string() ?: "{}").optString("ServerName") }

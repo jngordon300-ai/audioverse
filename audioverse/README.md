@@ -6,7 +6,11 @@ Personal audiophile and DJ platform for Android (Samsung Galaxy S26 Ultra + Gala
 
 Architecture: *AudioVerse — Architecture Plan v1.2* (claude.ai doc). Engine: AndroidX Media3, with libVLC as a fallback backend later on.
 
-## Current build: v0.8.0-alpha (free TV lists, Onn / Google TV, browser edition in `web/`); v0.7.0 added USB drives, M3U lists, default player; v0.6.0 added DJ; v0.5.0 added IPTV; v0.4.0-alpha — AudioVerse + Transmission Across the Diaspora
+## Current build: v0.12.0-alpha
+
+v0.12 (Council Phase 1): stricter home-server http rule (VPN or Trusted home Wi-Fi), Emby-compatible sign-in, auto Data saver on mobile data, free TV lists opt-in, browser edition without "Remember", Cloudflare static-site config, public APK publishing held until verified (repo variable `PUBLISH_APK=true`).
+
+### Earlier versions: v0.8.0-alpha (free TV lists, Onn / Google TV, browser edition in `web/`); v0.7.0 added USB drives, M3U lists, default player; v0.6.0 added DJ; v0.5.0 added IPTV; v0.4.0-alpha — AudioVerse + Transmission Across the Diaspora
 
 One app for the phone's music and live radio, plus video:
 

@@ -61,7 +61,7 @@ video{width:100%;max-height:60vh;background:#000;border-radius:12px}iframe{width
     <button data-tab="tv">TV</button>
     <button data-tab="dj">DJ</button>
     <button data-tab="watch">Watch</button>
-    <div class="foot">Browser edition · v0.8<br>Runs locally. Nothing is uploaded.</div>
+    <div class="foot">Browser edition · v0.12<br>Runs locally. Nothing is uploaded.</div>
   </nav>
   <main id="main"></main>
   <footer>
@@ -117,10 +117,12 @@ const S = {
   playlists: store.get("av.playlists", [{ id: 1, name: "Favorites", items: [] }]),
   radio: { cat: "featured", q: "" },
   queue: [], qi: -1,
-  tv: { sources: store.get("av.tv.sources", []), sel: null, channels: [], group: null, q: "", loading: false, err: "", playing: null, showAdult: store.get("av.tv.adult", false), hidden: 0 },
+  // IPTV links are session-only (Council U29): nothing with a login is ever written to browser storage.
+  tv: { sources: [], freeOn: store.get("av.tv.free", false), sel: null, channels: [], group: null, q: "", loading: false, err: "", playing: null, showAdult: store.get("av.tv.adult", false), hidden: 0 },
   dj: { fader: 0, curve: "power", fadeSec: 8, fading: false },
   watch: { yt: null, video: null }
 };
+try { localStorage.removeItem("av.tv.sources"); } catch {} // wipe links saved by older versions' "Remember"
 const stations = CATALOG.stations.filter(s => isWeb(s.url));
 const savePlaylists = () => store.set("av.playlists", S.playlists);
 
@@ -362,16 +364,14 @@ function tvStep(d){
   if (list.length) tvPlay(list[(i + d + list.length) % list.length]);
 }
 const tvVisible = () => { const q = S.tv.q.trim().toLowerCase(); return S.tv.channels.filter(c => (!S.tv.group || c.group === S.tv.group) && (!q || c.name.toLowerCase().includes(q))); };
-function tvAddLink(name, url, remember){
+function tvAddLink(name, url){
   if (!isWeb(url)) return "Paste the full link, starting with http:// or https://";
-  const src = { id: "u" + Date.now(), name: (name || "My IPTV").slice(0, 30), url, remember };
-  S.tv.sources.push(src); saveTvSources(); tvSelect(src.id); return "";
+  const src = { id: "u" + Date.now(), name: (name || "My IPTV").slice(0, 30), url };
+  S.tv.sources.push(src); tvSelect(src.id); return "";
 }
 function tvAddText(name, text){
-  const src = { id: "u" + Date.now(), name: (name || "Pasted list").slice(0, 30), text, remember: false }; S.tv.sources.push(src); saveTvSources(); tvSelect(src.id);
+  const src = { id: "u" + Date.now(), name: (name || "Pasted list").slice(0, 30), text }; S.tv.sources.push(src); tvSelect(src.id);
 }
-// Links with a login are kept for this browser session only, unless "remember" was ticked.
-const saveTvSources = () => store.set("av.tv.sources", S.tv.sources.filter(s => s.remember && s.url).map(({ id, name, url, remember }) => ({ id, name, url, remember })));
 
 // ---------------- DJ ----------------
 const DJ = {
@@ -488,9 +488,10 @@ const VIEWS = {
     const vis = tvVisible(); S.tvItems = vis;
     return `<div class="row"><div class="grow"><h2>TV</h2><div class="sub">${T.loading ? "Loading channels…" : T.channels.length ? `${T.channels.length} channels` : "IPTV playlists (M3U)"}</div></div><button data-act="tvadd">+ Add playlist</button></div>
       ${mine.length ? `<div class="mut" style="font-size:12px">Your playlists</div><div class="chips">${mine.map(s => `<span class="chip ${T.sel === s.id ? "on" : ""}" data-act="tvsel" data-k="${s.id}">${esc(s.name)}</span>`).join("")}</div>` : ""}
-      <div class="mut" style="font-size:12px">Free channels (no login)</div>
-      <div class="chips">${PRESETS.map(s => `<span class="chip ${T.sel === s.id ? "on" : ""}" data-act="tvsel" data-k="${s.id}">${esc(s.name)}</span>`).join("")}</div>
-      ${cur ? `<div class="row mut" style="font-size:12px"><span class="grow">${cur.preset ? "Public, unofficial, community-run list: some channels will be offline." : cur.remember ? "Saved in this browser (not encrypted)." : "This session only. Close the tab and it's gone."}</span>
+      ${T.freeOn ? `<div class="row mut" style="font-size:12px"><span class="grow">Free channels (no login, third-party)</span><button class="link" data-act="tvfree" data-k="0">Turn off</button></div>
+      <div class="chips">${PRESETS.map(s => `<span class="chip ${T.sel === s.id ? "on" : ""}" data-act="tvsel" data-k="${s.id}">${esc(s.name)}</span>`).join("")}</div>`
+      : `<div class="card"><b>Free channel lists</b><div class="mut" style="font-size:12px;margin:4px 0">Six public playlists (IPTV-Org, Free-TV, Pluto TV US, Samsung TV Plus US). Third-party and unofficial: AudioVerse doesn't host or vouch for them, channels come and go, and loading them shows your IP address to the list and stream hosts.</div><button data-act="tvfree" data-k="1">Turn on free lists</button></div>`}
+      ${cur ? `<div class="row mut" style="font-size:12px"><span class="grow">${cur.preset ? "Public, unofficial, community-run list: some channels will be offline." : "This session only. Close the tab and it's gone."}</span>
         <button class="link" data-act="tvreload">Reload</button>${cur.preset ? "" : '<button class="link" data-act="tvremove">Remove</button>'}</div>` : ""}
       ${T.hidden || T.showAdult ? `<div class="row mut" style="font-size:12px"><span class="grow">${T.showAdult ? "Adult channels shown" : T.hidden + " adult channels hidden"}</span><button class="link" data-act="tvadult">${T.showAdult ? "Hide" : "Show"}</button></div>` : ""}
       <div style="${T.playing ? "" : "display:none"}"><div id="tvSlot"></div>
@@ -570,7 +571,8 @@ document.addEventListener("click", e => {
     case "shuffle": { const pl = radioView().filter(s => s.type === "audio"); if (pl.length) playQueue(pl.map(stationItem), Math.floor(Math.random() * pl.length)); break; }
     case "tvsel": tvSelect(k); break;
     case "tvreload": tvSelect(S.tv.sel); break;
-    case "tvremove": S.tv.sources = S.tv.sources.filter(s => s.id !== S.tv.sel); saveTvSources(); Object.assign(S.tv, { sel: null, channels: [], err: "" }); render(); break;
+    case "tvfree": S.tv.freeOn = k === "1"; store.set("av.tv.free", S.tv.freeOn); if (!S.tv.freeOn && String(S.tv.sel).startsWith("p")) { tvStop(); Object.assign(S.tv, { sel: null, channels: [], err: "", playing: null }); } render(); break;
+    case "tvremove": S.tv.sources = S.tv.sources.filter(s => s.id !== S.tv.sel); Object.assign(S.tv, { sel: null, channels: [], err: "" }); render(); break;
     case "tvadult": S.tv.showAdult = !S.tv.showAdult; store.set("av.tv.adult", S.tv.showAdult); tvSelect(S.tv.sel); break;
     case "tvgroup": S.tv.group = k || null; render(); break;
     case "tvplay": tvPlay(S.tvItems[i]); break;
@@ -580,18 +582,18 @@ document.addEventListener("click", e => {
       <div class="mut" style="font-size:12px">Paste an M3U link, paste M3U text / a list of links, or open an .m3u file. Provider links often block browsers; the Android app has no such limit.</div>
       <input type="text" id="tvName" placeholder="Name (e.g. Gamma)" maxlength="30" style="margin-top:8px">
       <input type="password" id="tvUrl" placeholder="M3U link" style="margin-top:6px" autocomplete="off">
-      <label class="mut" style="font-size:12px;display:block;margin-top:6px"><input type="checkbox" id="tvRemember"> Remember on this computer (stored unencrypted in this browser; leave off if the link has your login)</label>
+      <div class="mut" style="font-size:12px;margin-top:6px">Kept for this tab only and never saved in the browser, so your login doesn't stay on this computer. For a saved, encrypted list use the Android app.</div>
       <div class="row" style="margin-top:8px"><button class="pri" data-act="tvsave">Save link</button><button data-act="tvfile">Open .m3u / .txt file</button></div>
       <textarea id="tvPaste" placeholder="…or paste M3U text or links here (one per line)" style="margin-top:10px"></textarea>
       <div class="row" style="margin-top:6px"><button data-act="tvpaste">Import pasted list</button><span class="grow"></span><button data-act="close">Close</button></div><div class="warn" id="tvAddErr"></div>`); break;
-    case "tvsave": { const err = tvAddLink($("#tvName").value.trim(), $("#tvUrl").value.trim(), $("#tvRemember").checked); if (err) $("#tvAddErr").textContent = err; else modal(""); break; }
+    case "tvsave": { const err = tvAddLink($("#tvName").value.trim(), $("#tvUrl").value.trim()); if (err) $("#tvAddErr").textContent = err; else modal(""); break; }
     case "tvpaste": { const t = $("#tvPaste").value; const nm = $("#tvName").value.trim(); if (!t.trim()) break;
       if (/#EXTINF/i.test(t)) tvAddText(nm, t);
       else { const links = t.split(/\r?\n/).map(l => l.trim()).filter(l => /https?:\/\//i.test(l) && !l.startsWith("#"));
         const lists = [], chans = [];
         links.forEach(l => { const at = Math.max(l.toLowerCase().lastIndexOf("http://"), l.toLowerCase().lastIndexOf("https://")); const url = l.slice(at).split(" ")[0]; const label = l.slice(0, at).replace(/[\s,|;:\-]+$/, "").trim();
           (/\.m3u(\?|$)|get\.php|type=m3u|output=m3u/i.test(url) ? lists : chans).push([label, url]); });
-        lists.forEach(([label, url], j) => S.tv.sources.push({ id: "u" + Date.now() + j, name: (label || nm || "Playlist " + (j + 1)).slice(0, 30), url, remember: false }));
+        lists.forEach(([label, url], j) => S.tv.sources.push({ id: "u" + Date.now() + j, name: (label || nm || "Playlist " + (j + 1)).slice(0, 30), url }));
         if (chans.length) tvAddText(nm || "Pasted channels", "#EXTM3U\n" + chans.map(([l, u], j) => `#EXTINF:-1,${l || "Channel " + (j + 1)}\n${u}`).join("\n"));
         else if (lists.length) tvSelect(S.tv.sources[S.tv.sources.length - 1].id);
         if (!lists.length && !chans.length) { $("#tvAddErr").textContent = "No links found"; break; } }

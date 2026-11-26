@@ -1,6 +1,6 @@
 // Builds web/AudioVerse.html: one self-contained file (no CDN, no server).
 // Usage: node web/build.mjs <hls.light.min.js> <mpegts.js>
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,4 +18,7 @@ html = html.replace("/*__HLS__*/", () => lib(hlsPath, "hls.js 1.5.20 light, © D
            .replace("/*__MPEGTS__*/", () => lib(mpegtsPath, "mpegts.js 1.7.3, © xqq / bilibili"))
            .replace("/*__STATIONS__*/", () => safe(JSON.stringify(stations)));
 writeFileSync(join(here, "AudioVerse.html"), html);
+// Static site for Cloudflare Workers (wrangler.jsonc at the repo root serves web/public only).
+mkdirSync(join(here, "public"), { recursive: true });
+writeFileSync(join(here, "public", "index.html"), html);
 console.log("wrote web/AudioVerse.html", (html.length / 1024).toFixed(0), "KB");

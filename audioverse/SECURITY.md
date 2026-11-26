@@ -3,9 +3,9 @@
 | Area | Decision |
 |------|----------|
 | Server credentials | Jellyfin token and Cloudflare Access service token are encrypted with an AES-256-GCM key held in the Android Keystore. Only ciphertext reaches SharedPreferences. |
-| Transport | Credentials are only attached to HTTPS requests, as headers, by a network interceptor that checks the host on every hop (including redirects). No `api_key` in URLs; the Jellyfin test refuses URLs that contain one. |
+| Transport | Credentials are attached only as headers, by a network interceptor that checks the host on every hop (including redirects): over HTTPS, or (v0.12) over plain http **only** to the saved private-network IP **and only while Android reports a VPN** (or the user turned on *Trusted home Wi-Fi*, default off, and is on Wi-Fi). Otherwise the request carries no credentials. The server-ID probe is an accident guard, not authentication. No `api_key` or token in URLs, ever. |
 | Certificates | Only system CAs are trusted. User-installed CAs are ignored. |
-| Cleartext | Allowed only because many radio streams are HTTP-only. No credentials are ever sent over HTTP. |
+| Cleartext | Allowed because many radio and IPTV streams are HTTP-only. No credentials go over HTTP except the home-server token to the private IP under the VPN rule above. |
 | Backup | `allowBackup=false` plus data-extraction rules exclude all app data from cloud backup and device transfer. |
 | Logging | No HTTP logging interceptor. `AuthConfig.toString()` hides secrets. Test results contain no URLs, hosts or tokens. |
 | UI secrets | Token fields are masked, held in memory only (not saved instance state) and cleared after use. "Forget saved login" wipes them. |
@@ -42,6 +42,8 @@
 | Home server (v0.10) | Jellyfin token from a one-time username/password sign-in (password not stored) and optional Cloudflare Access service token, both in the Keystore-encrypted CredentialStore; server addresses, user ID and server ID in an encrypted SecretPrefs. Sent only as headers by SecureHeaderInterceptor: over HTTPS, or over plain http **only** to the saved private-network IP literal (10/8, 172.16/12, 192.168/16, 100.64/10, fc00::/7). Before using the private address the app checks, with a header-less request, that the server there reports the signed-in server ID. Access headers go only to the tunnel host over HTTPS. Songs and videos are saved as `jellyfin://` links, so no stream URL or token is stored. Sign out revokes the token on the server and wipes the local copies. Export (Transformer) is disabled for server videos. |
 
 | Presets & search (v0.11) | EQ presets are numbers only, kept in the existing sound prefs. Search runs on the phone over the loaded library; nothing is sent anywhere. Folder paths are read from MediaStore's relative path and the picked folders, and shown only in the app. |
+
+| Phase 1 (v0.12) | `PrivateTransportPolicy` (VPN / trusted-Wi-Fi) with unit tests, including a replayed-server-ID case. Emby: `X-Emby-Token` header added alongside Jellyfin's `Authorization`. Free TV lists are off until the user opts in. Browser edition: IPTV links are never written to storage, and links saved by older versions are wiped on load. The static site ships security headers (CSP with `frame-ancestors 'none'`, nosniff, Permissions-Policy). The public `gate-latest` APK is held behind the `PUBLISH_APK` repo variable. |
 
 ## Known follow-ups
 - Station `WHUR World (HD2)` uses the same stream URL as `WHUR 96.3` in the catalog; check the HD2 URL.

@@ -123,8 +123,25 @@ fun IptvScreen(vm: IptvViewModel, full: Boolean, onFullscreen: (Boolean) -> Unit
             Text("Your playlists", color = AV.TextMuted, fontSize = 11.sp)
             ChipRow(mine.map { it.id.toString() to it.name }, s.selectedId?.toString() ?: "") { vm.select(it.toLong()) }
         }
-        Text("Free channels (no login)", color = AV.TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
-        ChipRow(free.map { it.id.toString() to it.name }, s.selectedId?.toString() ?: "") { vm.select(it.toLong()) }
+        if (s.freeListsOn) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Free channels (no login, third-party)", color = AV.TextMuted, fontSize = 11.sp, modifier = Modifier.weight(1f).padding(top = 4.dp))
+                TextButton(onClick = { vm.setFreeLists(false) }) { Text("Turn off", color = AV.TextMuted, fontSize = 11.sp) }
+            }
+            ChipRow(free.map { it.id.toString() to it.name }, s.selectedId?.toString() ?: "") { vm.select(it.toLong()) }
+        } else {
+            Column(
+                Modifier.fillMaxWidth().padding(top = 6.dp).background(AV.Surface, RoundedCornerShape(12.dp)).border(1.dp, AV.Line, RoundedCornerShape(12.dp)).padding(12.dp)
+            ) {
+                Text("Free channel lists", color = AV.Text, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Six public playlists (IPTV-Org, Free-TV, Pluto TV US, Samsung TV Plus US). They're third-party and unofficial: " +
+                        "AudioVerse doesn't host or vouch for them, channels come and go, and loading them shows your IP address to the list and stream hosts.",
+                    color = AV.TextMuted, fontSize = 12.sp
+                )
+                TextButton(onClick = { vm.setFreeLists(true) }) { Text("Turn on free lists", color = AV.Amber) }
+            }
+        }
 
         val current = s.sources.firstOrNull { it.id == s.selectedId }
         if (current == null) {

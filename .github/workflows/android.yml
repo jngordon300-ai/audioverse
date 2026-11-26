@@ -126,7 +126,9 @@ jobs:
   # https://github.com/<owner>/<repo>/releases/download/gate-latest/AudioVerse-gate.apk
   publish-apk:
     needs: [build, emulator-gate]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Held until the on-device checklist (U15) and release-candidate gate (U23) pass:
+    # set the repository variable PUBLISH_APK=true to publish (Council ruling, 2026-11-26).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PUBLISH_APK == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

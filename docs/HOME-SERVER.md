@@ -22,6 +22,8 @@ The app tries Home / VPN first and checks that the server answering is the same 
 - **At home:** give the Mac Mini a fixed IP in your router (DHCP reservation), e.g. `192.168.1.50`. App address: `http://192.168.1.50:8096`.
 - **On the go:** install **Tailscale** (free) on the Mac Mini, the S26 and the laptop, signed in to the same account (or use the mesh VPN you already run). The Mac Mini gets a `100.x.y.z` address. App address: `http://100.x.y.z:8096`. That one address works at home and away, as long as the VPN is on.
 - The app only accepts plain `http://` for private IPs (`10.*`, `172.16–31.*`, `192.168.*`, `100.64–127.*`), never for hostnames or public IPs.
+- **v0.12:** the token goes to the http address only while Android reports your **VPN is on**. To use the home address on home Wi-Fi without a VPN, switch on **Trusted home Wi-Fi** in Library → Server (off by default; never on public Wi-Fi). Simplest: leave Tailscale on, and use its `100.x` address everywhere.
+- **Emby (Chair ruling: Emby is the single server):** the same Server screen works with Emby. Use the Emby address (default port `8096`) and an Emby user; AudioVerse sends `X-Emby-Token` as a header. Your Emby Premiere key stays in Emby's own settings on the Mac Mini; AudioVerse never needs it.
 
 ## 3. Cloudflare path (backup, no VPN needed)
 1. Cloudflare dashboard → **Zero Trust → Networks → Tunnels → Create a tunnel** (cloudflared). Install the connector on the Mac Mini with the command Cloudflare shows (`brew install cloudflared`, then the `cloudflared service install <token>` line).
