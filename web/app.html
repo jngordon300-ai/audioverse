@@ -61,7 +61,7 @@ video{width:100%;max-height:60vh;background:#000;border-radius:12px}iframe{width
     <button data-tab="tv">TV</button>
     <button data-tab="dj">DJ</button>
     <button data-tab="watch">Watch</button>
-    <div class="foot">Browser edition · v0.12<br>Runs locally. Nothing is uploaded.</div>
+    <div class="foot">Browser edition · v0.13<br>Runs locally. Nothing is uploaded.</div>
   </nav>
   <main id="main"></main>
   <footer>
@@ -95,6 +95,38 @@ const PRESETS = [
   ["Pluto TV US","https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/main/playlists/plutotv_us.m3u"],
   ["Samsung TV Plus US","https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/main/playlists/samsungtvplus_us.m3u"]
 ].map(([name,url],i)=>({id:"p"+i,name,url,preset:true}));
+// Transmission TV: AudioVerse's own curated lineup, built in the browser from public lists (same rules as the app).
+const TX_IPTV = c => `https://raw.githubusercontent.com/iptv-org/iptv/master/streams/${c}.m3u`;
+const TX_FAST = n => `https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/main/playlists/${n}.m3u`;
+const TX_FASTL = ["plutotv_us","samsungtvplus_us","plex_us","roku_all"].map(TX_FAST);
+const TX_US = TX_FASTL.concat(["us","us_local"].map(TX_IPTV));
+const TX_AFR = ["ng","gh","za","ke","sn","et"].map(TX_IPTV), TX_CAR = ["jm","tt","bb","ht","bs","gy"].map(TX_IPTV);
+const exactSet = (...a) => new Set(a.map(x => x.toLowerCase()));
+const TX_RULES = [
+  ["Philadelphia", exactSet("CBS News Philadelphia","PhillyCAM"), TX_US],
+  ["News", exactSet("CNN Headlines","NBC News NOW","TYT Network","ABC News Live","CBS News 24/7","LiveNOW from FOX","FOX SOUL","TheGrio","Black Star Network"), TX_US],
+  ["Hip-Hop Videos", exactSet("Vevo Hip-Hop","Vevo True School Hip-Hop","Stingray Hip Hop","XITE Hip-Hop Evolution","XITE Rap Game","Hip-Hop/R&B","TRACE Urban","VH1+ Hip Hop & Rap"), TX_US],
+  ["R&B / Soul Videos", exactSet("Vevo R&B","XITE R&B Classic Jams","XITE R&B Feels","Stingray Soul Storm","XITE 90s Throwback","XITE 60s & 70s Groove"), TX_US],
+  ["Gospel", exactSet("XITE Gospel"), TX_US],
+  ["African American", /\b(BET|Tyler Perry|ALLBLK|Black Family Sitcoms|Black Cinema|Bounce|Ebony|Aspire|TV One|CLEO|REVOLT|Nolly|Afro|Brown Sugar|Kevin Hart|HBCU|Shades of Black|BlackPix|FilmRise Black|Urban TV)\b/i, TX_FASTL],
+  ["Caribbean", null, TX_CAR],
+  ["Africa", null, TX_AFR]
+];
+const TRANSMISSION = { id: "tx", name: "Transmission TV", preset: true, transmission: true };
+async function buildTransmission(){
+  const urls = [...new Set(TX_RULES.flatMap(r => r[2]))];
+  const lists = {};
+  await Promise.all(urls.map(async u => { try { const r = await fetch(u, { credentials: "omit", referrerPolicy: "no-referrer" }); lists[u] = r.ok ? parseM3U(await r.text()) : []; } catch { lists[u] = []; } }));
+  const out = [], seenU = new Set(), seenN = new Set();
+  for (const [group, match, srcs] of TX_RULES) for (const u of srcs) for (const c of lists[u] || []) {
+    const name = c.name.replace(/\s*\((?:\d+[pi]|SD|HD)\)\s*$/i, "").trim(), key = name.toLowerCase();
+    if (seenU.has(c.url) || seenN.has(key)) continue;
+    const ok = match === null ? true : match instanceof Set ? match.has(key) : match.test(name);
+    if (!ok) continue;
+    seenU.add(c.url); seenN.add(key); out.push({ i: out.length, name, url: c.url, group });
+  }
+  return out;
+}
 const RADIO_CATS = [["featured","Featured"],["all","All radio"],["philly","Philly"],["hiphop","Hip-Hop"],["rnb","R&B"],["gospel","Gospel"],["jazz","Jazz"],["talk","Talk"],["hbcu","HBCU"],["college","College"],["internet","Internet"],["diaspora-afrobeats","Afrobeats"],["diaspora-amapiano","Amapiano"],["diaspora-reggae","Reggae"],["diaspora-uk","UK"],["morning","Morning shows"],["pods","Podcasts"],["siriusxm","SiriusXM"]];
 const WATCH_CATS = new Set(["musictv","wrestling","comedy"]);
 const AUDIO_EXT = new Set("mp3 flac opus ogg oga m4a aac wav aif aiff alac wma".split(" "));
@@ -317,9 +349,15 @@ function parseM3U(text){
   return out;
 }
 async function tvSelect(id){
-  const src = PRESETS.concat(S.tv.sources).find(s => s.id === id); if (!src) return;
+  const src = [TRANSMISSION].concat(PRESETS, S.tv.sources).find(s => s.id === id); if (!src) return;
   Object.assign(S.tv, { sel: id, loading: true, err: "", channels: [], group: null, q: "" }); render();
   try {
+    if (src.transmission) {
+      const all = S.tv.txCache || (S.tv.txCache = await buildTransmission());
+      const kept = S.tv.showAdult ? all : all.filter(c => !ADULT.test(c.group));
+      Object.assign(S.tv, { channels: kept, hidden: all.length - kept.length, loading: false, err: kept.length ? "" : "Couldn't build Transmission TV right now" });
+      render(); return;
+    }
     let text = src.text;
     if (!text) {
       const r = await fetch(src.url, { credentials: "omit", referrerPolicy: "no-referrer" });
@@ -483,15 +521,15 @@ const VIEWS = {
         : `<div class="item" data-act="ropen" data-i="${i}"><div class="grow"><div class="t">${esc(st.name)}</div><div class="d">${esc([st.city, st.tags].filter(Boolean).join(" · "))}</div></div><span class="mut">${st.type === "spotify" ? "Spotify ↗" : "Open ↗"}</span></div>`).join("") || '<div class="mut">No stations match.</div>'}</div>`;
   },
   tv(){
-    const T = S.tv; const mine = T.sources, cur = PRESETS.concat(mine).find(s => s.id === T.sel);
+    const T = S.tv; const mine = T.sources, cur = [TRANSMISSION].concat(PRESETS, mine).find(s => s.id === T.sel);
     const groups = {}; T.channels.forEach(c => groups[c.group] = (groups[c.group] || 0) + 1);
     const vis = tvVisible(); S.tvItems = vis;
     return `<div class="row"><div class="grow"><h2>TV</h2><div class="sub">${T.loading ? "Loading channels…" : T.channels.length ? `${T.channels.length} channels` : "IPTV playlists (M3U)"}</div></div><button data-act="tvadd">+ Add playlist</button></div>
       ${mine.length ? `<div class="mut" style="font-size:12px">Your playlists</div><div class="chips">${mine.map(s => `<span class="chip ${T.sel === s.id ? "on" : ""}" data-act="tvsel" data-k="${s.id}">${esc(s.name)}</span>`).join("")}</div>` : ""}
       ${T.freeOn ? `<div class="row mut" style="font-size:12px"><span class="grow">Free channels (no login, third-party)</span><button class="link" data-act="tvfree" data-k="0">Turn off</button></div>
-      <div class="chips">${PRESETS.map(s => `<span class="chip ${T.sel === s.id ? "on" : ""}" data-act="tvsel" data-k="${s.id}">${esc(s.name)}</span>`).join("")}</div>`
-      : `<div class="card"><b>Free channel lists</b><div class="mut" style="font-size:12px;margin:4px 0">Six public playlists (IPTV-Org, Free-TV, Pluto TV US, Samsung TV Plus US). Third-party and unofficial: AudioVerse doesn't host or vouch for them, channels come and go, and loading them shows your IP address to the list and stream hosts.</div><button data-act="tvfree" data-k="1">Turn on free lists</button></div>`}
-      ${cur ? `<div class="row mut" style="font-size:12px"><span class="grow">${cur.preset ? "Public, unofficial, community-run list: some channels will be offline." : "This session only. Close the tab and it's gone."}</span>
+      <div class="chips">${[TRANSMISSION].concat(PRESETS).map(s => `<span class="chip ${T.sel === s.id ? "on" : ""}" data-act="tvsel" data-k="${s.id}">${esc(s.name)}</span>`).join("")}</div>`
+      : `<div class="card"><b>Free channel lists</b><div class="mut" style="font-size:12px;margin:4px 0">Transmission TV (our curated lineup) plus six public playlists (IPTV-Org, Free-TV, Pluto TV US, Samsung TV Plus US). Third-party and unofficial: AudioVerse doesn't host or vouch for them, channels come and go, and loading them shows your IP address to the list and stream hosts.</div><button data-act="tvfree" data-k="1">Turn on free lists</button></div>`}
+      ${cur ? `<div class="row mut" style="font-size:12px"><span class="grow">${cur.transmission ? "AudioVerse's own lineup, built in this browser from public lists: Philadelphia, News, Hip-Hop, R&B / Soul, Gospel, African American, Caribbean, Africa." : cur.preset ? "Public, unofficial, community-run list: some channels will be offline." : "This session only. Close the tab and it's gone."}</span>
         <button class="link" data-act="tvreload">Reload</button>${cur.preset ? "" : '<button class="link" data-act="tvremove">Remove</button>'}</div>` : ""}
       ${T.hidden || T.showAdult ? `<div class="row mut" style="font-size:12px"><span class="grow">${T.showAdult ? "Adult channels shown" : T.hidden + " adult channels hidden"}</span><button class="link" data-act="tvadult">${T.showAdult ? "Hide" : "Show"}</button></div>` : ""}
       <div style="${T.playing ? "" : "display:none"}"><div id="tvSlot"></div>
@@ -570,8 +608,8 @@ document.addEventListener("click", e => {
     case "ropen": openExternal(S.radioItems[i].url); break;
     case "shuffle": { const pl = radioView().filter(s => s.type === "audio"); if (pl.length) playQueue(pl.map(stationItem), Math.floor(Math.random() * pl.length)); break; }
     case "tvsel": tvSelect(k); break;
-    case "tvreload": tvSelect(S.tv.sel); break;
-    case "tvfree": S.tv.freeOn = k === "1"; store.set("av.tv.free", S.tv.freeOn); if (!S.tv.freeOn && String(S.tv.sel).startsWith("p")) { tvStop(); Object.assign(S.tv, { sel: null, channels: [], err: "", playing: null }); } render(); break;
+    case "tvreload": if (S.tv.sel === "tx") S.tv.txCache = null; tvSelect(S.tv.sel); break;
+    case "tvfree": S.tv.freeOn = k === "1"; store.set("av.tv.free", S.tv.freeOn); if (S.tv.freeOn && !S.tv.sel) { tvSelect("tx"); break; } if (!S.tv.freeOn && /^(p|tx)/.test(String(S.tv.sel))) { tvStop(); Object.assign(S.tv, { sel: null, channels: [], err: "", playing: null }); } render(); break;
     case "tvremove": S.tv.sources = S.tv.sources.filter(s => s.id !== S.tv.sel); Object.assign(S.tv, { sel: null, channels: [], err: "" }); render(); break;
     case "tvadult": S.tv.showAdult = !S.tv.showAdult; store.set("av.tv.adult", S.tv.showAdult); tvSelect(S.tv.sel); break;
     case "tvgroup": S.tv.group = k || null; render(); break;

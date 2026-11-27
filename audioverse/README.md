@@ -6,7 +6,11 @@ Personal audiophile and DJ platform for Android (Samsung Galaxy S26 Ultra + Gala
 
 Architecture: *AudioVerse — Architecture Plan v1.2* (claude.ai doc). Engine: AndroidX Media3, with libVLC as a fallback backend later on.
 
-## Current build: v0.12.0-alpha
+## Current build: v0.13.0-alpha
+
+v0.13: **Transmission TV**, AudioVerse's own curated TV lineup, built on the device from public lists in eight groups: Philadelphia, News (CNN Headlines, NBC News NOW, TYT Network, …), Hip-Hop Videos, R&B / Soul Videos, Gospel, African American, Caribbean, Africa. First among the free lists (opt-in) and the default when you have no playlist of your own. It refreshes every 12 h; Reload rebuilds it. The same lineup is in the browser edition, and `docs/build_diaspora_m3u.py` builds it on the Mac Mini for Emby Live TV.
+
+### v0.12.0-alpha
 
 v0.12 (Council Phase 1): stricter home-server http rule (VPN or Trusted home Wi-Fi), Emby-compatible sign-in, auto Data saver on mobile data, free TV lists opt-in, browser edition without "Remember", Cloudflare static-site config, public APK publishing held until verified (repo variable `PUBLISH_APK=true`).
 

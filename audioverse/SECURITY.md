@@ -45,6 +45,8 @@
 
 | Phase 1 (v0.12) | `PrivateTransportPolicy` (VPN / trusted-Wi-Fi) with unit tests, including a replayed-server-ID case. Emby: `X-Emby-Token` header added alongside Jellyfin's `Authorization`. Free TV lists are off until the user opts in. Browser edition: IPTV links are never written to storage, and links saved by older versions are wiped on load. The static site ships security headers (CSP with `frame-ancestors 'none'`, nosniff, Permissions-Policy). The public `gate-latest` APK is held behind the `PUBLISH_APK` repo variable. |
 
+| Transmission TV (v0.13) | Built on the device from public, no-login playlists on raw.githubusercontent.com (iptv-org stream files, BuddyChewChew FAST lists), fetched with the IPTV client (no credential headers). The result is cached for 12 h in the app cache dir (public channel links only). Behind the free-lists opt-in (C5). FAST streams go through the third-party jmp2.uk proxy, which sees the device IP. |
+
 ## Known follow-ups
 - Station `WHUR World (HD2)` uses the same stream URL as `WHUR 96.3` in the catalog; check the HD2 URL.
 - Pin GitHub Actions to commit SHAs once versions settle.

@@ -19,6 +19,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.jaygordonai.audioverse.network.SecretPrefs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -133,7 +134,10 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
         }
 
     private val settings = app.getSharedPreferences("audioverse_iptv_settings", android.content.Context.MODE_PRIVATE)
-    private val presetSources = IptvPresets.all.map { IptvSource(it.id, it.name, it.url, isFile = false) }
+    // Transmission TV (the app's own curated lineup) comes first among the free lists.
+    private val presetSources = listOf(IptvSource(TransmissionTv.ID, TransmissionTv.NAME, "transmission://lineup", isFile = false)) +
+        IptvPresets.all.map { IptvSource(it.id, it.name, it.url, isFile = false) }
+    private var forceRefresh = false
     private fun freeOn() = settings.getBoolean("free_lists", false)
     private fun allSources() = sources + if (freeOn()) presetSources else emptyList()
 
@@ -141,6 +145,7 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
         settings.edit().putBoolean("free_lists", on).apply()
         _ui.update { it.copy(freeListsOn = on) }
         publishSources()
+        if (on && _ui.value.selectedId == null) select(TransmissionTv.ID)
         if (!on && (_ui.value.selectedId ?: 0) < 0) {
             stop(); channels = emptyList()
             _ui.update { it.copy(selectedId = null, total = 0, groups = emptyList(), visible = emptyList(), group = null, error = null) }
@@ -151,7 +156,8 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
         sources = readSources()
         _ui.update { it.copy(showAdult = settings.getBoolean("show_adult", false), freeListsOn = freeOn()) }
         publishSources()
-        sources.firstOrNull()?.let { select(it.id) }
+        // Default: your own first playlist, otherwise Transmission TV (once the free lists are on).
+        (sources.firstOrNull()?.id ?: TransmissionTv.ID.takeIf { freeOn() })?.let { select(it) }
     }
 
     fun setShowAdult(on: Boolean) {
@@ -316,6 +322,7 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
                     when {
                         src.inline -> M3uParser.parse((store.get(inlineKey(src.id)) ?: "").lineSequence())
                         src.isFile -> readFile(src)
+                        src.id == TransmissionTv.ID -> loadTransmission(force = forceRefresh.also { forceRefresh = false })
                         else -> fetch(src)
                     }
                 }
@@ -339,7 +346,43 @@ class IptvViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun reload() { _ui.value.selectedId?.let { select(it) } }
+    fun reload() { _ui.value.selectedId?.let { forceRefresh = true; select(it) } }
+
+    /**
+     * Builds Transmission TV from its public sources in parallel, then caches the result for 12 h
+     * in app cache (public channel links only; no logins involved). Reload rebuilds it.
+     */
+    private suspend fun loadTransmission(force: Boolean): M3uResult {
+        val cache = java.io.File(ctx.cacheDir, "transmission_tv.m3u")
+        if (!force && cache.exists() && System.currentTimeMillis() - cache.lastModified() < 12 * 3_600_000L) {
+            return M3uParser.parse(cache.readText().lineSequence())
+        }
+        val bySource = kotlinx.coroutines.coroutineScope {
+            TransmissionTv.allSources.map { url ->
+                async(Dispatchers.IO) { url to (fetchPublic(url)?.let { M3uParser.parse(it.lineSequence()).channels } ?: emptyList()) }
+            }.map { it.await() }.toMap()
+        }
+        val lineup = TransmissionTv.curate(bySource)
+        if (lineup.isEmpty()) throw IOException("empty lineup")
+        val text = buildString {
+            append("#EXTM3U\n")
+            lineup.forEach { c ->
+                append("#EXTINF:-1 group-title=\"").append(c.group.replace("\"", "'")).append("\",").append(c.name).append('\n')
+                c.userAgent?.let { append("#EXTVLCOPT:http-user-agent=").append(it).append('\n') }
+                c.referrer?.let { append("#EXTVLCOPT:http-referrer=").append(it).append('\n') }
+                append(c.url).append('\n')
+            }
+        }
+        try { cache.writeText(text) } catch (_: Exception) { }
+        return M3uResult(lineup, truncated = false, skipped = 0)
+    }
+
+    /** A public playlist (no credentials ever attached); null if it fails. Capped at 16 MB. */
+    private fun fetchPublic(url: String): String? = try {
+        http.newCall(Request.Builder().url(url).header("User-Agent", UA).build()).execute().use { r ->
+            if (!r.isSuccessful) null else r.body?.let { b -> if (b.contentLength() > 16L * 1024 * 1024) null else b.string() }
+        }
+    } catch (e: Exception) { null }
 
     private fun readFile(src: IptvSource): M3uResult =
         ctx.contentResolver.openInputStream(Uri.parse(src.link))?.bufferedReader()?.use { M3uParser.parse(it.lineSequence()) }

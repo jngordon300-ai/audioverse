@@ -135,7 +135,7 @@ fun IptvScreen(vm: IptvViewModel, full: Boolean, onFullscreen: (Boolean) -> Unit
             ) {
                 Text("Free channel lists", color = AV.Text, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Six public playlists (IPTV-Org, Free-TV, Pluto TV US, Samsung TV Plus US). They're third-party and unofficial: " +
+                    "Transmission TV (our curated lineup) plus six public playlists (IPTV-Org, Free-TV, Pluto TV US, Samsung TV Plus US). All third-party and unofficial: " +
                         "AudioVerse doesn't host or vouch for them, channels come and go, and loading them shows your IP address to the list and stream hosts.",
                     color = AV.TextMuted, fontSize = 12.sp
                 )
@@ -153,6 +153,8 @@ fun IptvScreen(vm: IptvViewModel, full: Boolean, onFullscreen: (Boolean) -> Unit
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 when {
+                    current.id == com.jaygordonai.audioverse.app.iptv.TransmissionTv.ID ->
+                        "AudioVerse's own lineup (Philadelphia, News, Hip-Hop, R&B / Soul, Gospel, African American, Caribbean, Africa), built on this device from public lists. Refreshes every 12 h; Reload to rebuild."
                     current.preset -> "Public list, unofficial and community-run: some channels may be offline"
                     current.plainHttp -> "⚠ This link is http://, so your login travels unencrypted. Use an https link if your provider has one."
                     else -> "Saved encrypted on this device"
