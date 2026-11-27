@@ -12,8 +12,8 @@ android {
         applicationId = "com.jaygordonai.audioverse"
         minSdk = 29
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.3.0-alpha"
+        versionCode = 16
+        versionName = "0.13.0-alpha"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -61,6 +61,8 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
 
     implementation(libs.media3.exoplayer)
+    implementation(libs.media3.exoplayer.hls)
+    implementation(libs.media3.datasource.okhttp)
     implementation(libs.media3.extractor)
     implementation(libs.media3.session)
     implementation(libs.media3.transformer)

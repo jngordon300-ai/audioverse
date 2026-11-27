@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  AudioVerse · Transmission — browser edition (Mac Mini / laptop).
+  One file, no server, no accounts, no trackers. Scripts are all inline (no CDN).
+  Network use: only the stations, playlists and YouTube embeds you choose to play.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src * blob: data:; connect-src * blob: data:; worker-src blob:; frame-src https://www.youtube-nocookie.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>AudioVerse · Transmission</title>
+<style>
+:root{--g:#0E0F12;--s:#181A1F;--s2:#22252C;--l:#2A2D35;--t:#F2F2F0;--m:#A3A7B0;--a:#F5A524;--oa:#1A1205;--w:#FFB4A8}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--g);color:var(--t);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{background:var(--s);border:1px solid var(--l);border-radius:10px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--a)}button.pri{background:var(--a);color:var(--oa);border-color:var(--a);font-weight:600}
+button.link{background:none;border:none;color:var(--a);padding:4px 6px}button:disabled{opacity:.4;cursor:default}
+input[type=text],input[type=search],input[type=password],textarea{background:var(--s);border:1px solid var(--l);border-radius:10px;padding:8px 10px;width:100%;color:var(--t)}
+textarea{min-height:90px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+input[type=range]{accent-color:var(--a);width:100%}
+#app{display:grid;grid-template-columns:200px 1fr;grid-template-rows:1fr auto;height:100vh}
+nav{grid-row:1/3;background:#0b0c0f;border-right:1px solid var(--l);padding:18px 12px;display:flex;flex-direction:column;gap:4px}
+nav h1{font-size:17px;margin:0 6px 14px;line-height:1.2}nav h1 small{display:block;color:var(--a);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+nav button{text-align:left;background:none;border:none;border-radius:8px;padding:9px 10px;color:var(--m)}
+nav button.on{background:var(--s);color:var(--a)}nav .foot{margin-top:auto;color:var(--m);font-size:11px;padding:6px}
+main{overflow:auto;padding:22px 28px}
+h2{font-size:26px;margin:0 0 2px}.sub{color:var(--m);font-size:13px;margin-bottom:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.grow{flex:1;min-width:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chip{background:var(--s);border:1px solid var(--l);border-radius:999px;padding:5px 12px;color:var(--m);cursor:pointer;font-size:13px}
+.chip.on{background:var(--a);color:var(--oa);border-color:var(--a)}
+.list{margin-top:8px}.item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer}
+.item:hover{background:var(--s)}.item.on{background:var(--s2)}.item .t{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .d{color:var(--m);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.item.on .t{color:var(--a)}
+.badge{color:var(--a);font-size:11px;font-weight:700}.mut{color:var(--m)}.warn{color:var(--w)}.amber{color:var(--a)}
+.card{background:var(--s);border:1px solid var(--l);border-radius:14px;padding:14px;margin:10px 0}
+.icon{background:none;border:none;color:var(--a);padding:2px 6px;font-size:15px}
+footer{grid-column:2;background:#0b0c0f;border-top:1px solid var(--l);padding:10px 20px;display:flex;gap:14px;align-items:center}
+footer .np{width:260px;min-width:0}footer .np .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+footer .np .d{color:var(--m);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.time{color:var(--m);font-size:12px;font-variant-numeric:tabular-nums;width:44px;text-align:center}
+video{width:100%;max-height:60vh;background:#000;border-radius:12px}iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000}
+.decks{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.deck{background:var(--s);border:1px solid var(--l);border-radius:14px;padding:14px}.deck.play{border-color:var(--a)}
+.deck h3{margin:0;color:var(--a);font-size:12px;letter-spacing:.1em}
+.modal{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;z-index:9}
+.modal>div{background:var(--s);border:1px solid var(--l);border-radius:16px;padding:18px;width:min(560px,92vw);max-height:84vh;display:flex;flex-direction:column}
+.modal .list{overflow:auto}
+@media (max-width:760px){#app{grid-template-columns:1fr}nav{grid-row:auto;flex-direction:row;overflow:auto;padding:8px}nav h1,nav .foot{display:none}footer{grid-column:1;flex-wrap:wrap}.decks{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="nav">
+    <h1><small>AudioVerse</small>Transmission</h1>
+    <button data-tab="library">Library</button>
+    <button data-tab="radio">Radio</button>
+    <button data-tab="tv">TV</button>
+    <button data-tab="dj">DJ</button>
+    <button data-tab="watch">Watch</button>
+    <div class="foot">Browser edition · v0.13<br>Runs locally. Nothing is uploaded.</div>
+  </nav>
+  <main id="main"></main>
+  <footer>
+    <div class="np"><div class="t" id="npT">Nothing playing</div><div class="d" id="npD">Pick a song or a station</div></div>
+    <button class="icon" id="bPrev" title="Previous">⏮</button>
+    <button class="pri" id="bPlay">Play</button>
+    <button class="icon" id="bNext" title="Next">⏭</button>
+    <span class="time" id="tPos">0:00</span>
+    <input type="range" id="seek" min="0" max="1000" value="0" class="grow">
+    <span class="time" id="tDur">0:00</span>
+    <span class="mut">Vol</span><input type="range" id="vol" min="0" max="100" value="90" style="width:90px">
+  </footer>
+</div>
+<audio id="main-audio" preload="none"></audio>
+<div id="modal"></div>
+
+<script>
+/*__HLS__*/
+</script>
+<script>
+/*__MPEGTS__*/
+</script>
+<script>
+"use strict";
+const CATALOG = /*__STATIONS__*/;
+const PRESETS = [
+  ["Free · US","https://iptv-org.github.io/iptv/countries/us.m3u"],
+  ["Free · By category","https://iptv-org.github.io/iptv/index.category.m3u"],
+  ["Free · Worldwide","https://iptv-org.github.io/iptv/index.m3u"],
+  ["Free-TV","https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8"],
+  ["Pluto TV US","https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/main/playlists/plutotv_us.m3u"],
+  ["Samsung TV Plus US","https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/main/playlists/samsungtvplus_us.m3u"]
+].map(([name,url],i)=>({id:"p"+i,name,url,preset:true}));
+// Transmission TV: AudioVerse's own curated lineup, built in the browser from public lists (same rules as the app).
+const TX_IPTV = c => `https://raw.githubusercontent.com/iptv-org/iptv/master/streams/${c}.m3u`;
+const TX_FAST = n => `https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/main/playlists/${n}.m3u`;
+const TX_FASTL = ["plutotv_us","samsungtvplus_us","plex_us","roku_all"].map(TX_FAST);
+const TX_US = TX_FASTL.concat(["us","us_local"].map(TX_IPTV));
+const TX_AFR = ["ng","gh","za","ke","sn","et"].map(TX_IPTV), TX_CAR = ["jm","tt","bb","ht","bs","gy"].map(TX_IPTV);
+const exactSet = (...a) => new Set(a.map(x => x.toLowerCase()));
+const TX_RULES = [
+  ["Philadelphia", exactSet("CBS News Philadelphia","PhillyCAM"), TX_US],
+  ["News", exactSet("CNN Headlines","NBC News NOW","TYT Network","ABC News Live","CBS News 24/7","LiveNOW from FOX","FOX SOUL","TheGrio","Black Star Network"), TX_US],
+  ["Hip-Hop Videos", exactSet("Vevo Hip-Hop","Vevo True School Hip-Hop","Stingray Hip Hop","XITE Hip-Hop Evolution","XITE Rap Game","Hip-Hop/R&B","TRACE Urban","VH1+ Hip Hop & Rap"), TX_US],
+  ["R&B / Soul Videos", exactSet("Vevo R&B","XITE R&B Classic Jams","XITE R&B Feels","Stingray Soul Storm","XITE 90s Throwback","XITE 60s & 70s Groove"), TX_US],
+  ["Gospel", exactSet("XITE Gospel"), TX_US],
+  ["African American", /\b(BET|Tyler Perry|ALLBLK|Black Family Sitcoms|Black Cinema|Bounce|Ebony|Aspire|TV One|CLEO|REVOLT|Nolly|Afro|Brown Sugar|Kevin Hart|HBCU|Shades of Black|BlackPix|FilmRise Black|Urban TV)\b/i, TX_FASTL],
+  ["Caribbean", null, TX_CAR],
+  ["Africa", null, TX_AFR]
+];
+const TRANSMISSION = { id: "tx", name: "Transmission TV", preset: true, transmission: true };
+async function buildTransmission(){
+  const urls = [...new Set(TX_RULES.flatMap(r => r[2]))];
+  const lists = {};
+  await Promise.all(urls.map(async u => { try { const r = await fetch(u, { credentials: "omit", referrerPolicy: "no-referrer" }); lists[u] = r.ok ? parseM3U(await r.text()) : []; } catch { lists[u] = []; } }));
+  const out = [], seenU = new Set(), seenN = new Set();
+  for (const [group, match, srcs] of TX_RULES) for (const u of srcs) for (const c of lists[u] || []) {
+    const name = c.name.replace(/\s*\((?:\d+[pi]|SD|HD)\)\s*$/i, "").trim(), key = name.toLowerCase();
+    if (seenU.has(c.url) || seenN.has(key)) continue;
+    const ok = match === null ? true : match instanceof Set ? match.has(key) : match.test(name);
+    if (!ok) continue;
+    seenU.add(c.url); seenN.add(key); out.push({ i: out.length, name, url: c.url, group });
+  }
+  return out;
+}
+const RADIO_CATS = [["featured","Featured"],["all","All radio"],["philly","Philly"],["hiphop","Hip-Hop"],["rnb","R&B"],["gospel","Gospel"],["jazz","Jazz"],["talk","Talk"],["hbcu","HBCU"],["college","College"],["internet","Internet"],["diaspora-afrobeats","Afrobeats"],["diaspora-amapiano","Amapiano"],["diaspora-reggae","Reggae"],["diaspora-uk","UK"],["morning","Morning shows"],["pods","Podcasts"],["siriusxm","SiriusXM"]];
+const WATCH_CATS = new Set(["musictv","wrestling","comedy"]);
+const AUDIO_EXT = new Set("mp3 flac opus ogg oga m4a aac wav aif aiff alac wma".split(" "));
+const VIDEO_EXT = new Set("mp4 m4v mkv webm mov".split(" "));
+const ADULT = /(^|[^a-z])(xxx|adult|porn|18\+)([^a-z]|$)/i;
+
+// ---------------- helpers ----------------
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return isFinite(s) ? `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}` : "LIVE"; };
+const store = { get(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const isWeb = u => /^https?:\/\//i.test(u || "");
+function openExternal(url){ if (isWeb(url)) window.open(url, "_blank", "noopener,noreferrer"); }
+
+// ---------------- state ----------------
+const S = {
+  tab: store.get("av.tab", "library"),
+  songs: [], videos: [], folderNames: [], scanning: "",
+  lib: { view: "songs", group: null, q: "" },
+  playlists: store.get("av.playlists", [{ id: 1, name: "Favorites", items: [] }]),
+  radio: { cat: "featured", q: "" },
+  queue: [], qi: -1,
+  // IPTV links are session-only (Council U29): nothing with a login is ever written to browser storage.
+  tv: { sources: [], freeOn: store.get("av.tv.free", false), sel: null, channels: [], group: null, q: "", loading: false, err: "", playing: null, showAdult: store.get("av.tv.adult", false), hidden: 0 },
+  dj: { fader: 0, curve: "power", fadeSec: 8, fading: false },
+  watch: { yt: null, video: null }
+};
+try { localStorage.removeItem("av.tv.sources"); } catch {} // wipe links saved by older versions' "Remember"
+const stations = CATALOG.stations.filter(s => isWeb(s.url));
+const savePlaylists = () => store.set("av.playlists", S.playlists);
+
+// ---------------- library (folders on this computer) ----------------
+const idb = (() => {
+  let db; const open = () => db ? Promise.resolve(db) : new Promise((res, rej) => {
+    const r = indexedDB.open("audioverse", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv");
+    r.onsuccess = () => res(db = r.result); r.onerror = () => rej(r.error); });
+  return {
+    get: async k => (await open(), new Promise(r => { const q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = () => r(q.result); q.onerror = () => r(undefined); })),
+    set: async (k, v) => (await open(), new Promise(r => { const t = db.transaction("kv", "readwrite"); t.objectStore("kv").put(v, k); t.oncomplete = r; t.onerror = r; }))
+  };
+})();
+
+function songFromFile(file, path){
+  const parts = path.split("/"); const name = parts.pop();
+  const base = name.replace(/\.[^.]+$/, "");
+  let artist = parts.length >= 2 ? parts[parts.length - 2] : "Unknown artist";
+  let album = parts.length >= 1 ? parts[parts.length - 1] : "";
+  let title = base.replace(/^\d{1,3}[\s.\-_]+/, "");
+  const m = title.match(/^(.+?)\s+-\s+(.+)$/); if (m) { artist = m[1]; title = m[2]; }
+  return { id: path, file, title, artist, album, path };
+}
+
+async function* walkHandle(dir, prefix, depth = 0){
+  for await (const [name, h] of dir.entries()) {
+    if (name.startsWith(".")) continue;
+    if (h.kind === "directory") { if (depth < 12) yield* walkHandle(h, prefix + name + "/", depth + 1); }
+    else yield [h, prefix + name];
+  }
+}
+
+async function scanHandles(handles){
+  const songs = [], videos = [];
+  for (const dir of handles) {
+    let n = 0;
+    for await (const [h, path] of walkHandle(dir, dir.name + "/")) {
+      const ext = path.split(".").pop().toLowerCase();
+      if (!AUDIO_EXT.has(ext) && !VIDEO_EXT.has(ext)) continue;
+      if (++n % 50 === 0) { S.scanning = `Scanning ${dir.name} · ${n} files`; render(); }
+      const file = await h.getFile();
+      if (AUDIO_EXT.has(ext)) songs.push(songFromFile(file, path)); else videos.push({ name: file.name, file, folder: dir.name });
+    }
+  }
+  return { songs, videos };
+}
+
+async function addFolder(){
+  if (window.showDirectoryPicker) {
+    try {
+      const dir = await showDirectoryPicker({ mode: "read", id: "audioverse-music" });
+      let saved = []; try { saved = (await idb.get("folders")) || []; } catch {}
+      saved.push(dir); try { await idb.set("folders", saved); } catch {}
+      await rescan(true);
+    } catch (e) { /* cancelled */ }
+  } else $("#dirInput").click();
+}
+
+async function rescan(withPrompt){
+  let handles = [];
+  try { handles = (await idb.get("folders")) || []; } catch { handles = []; }
+  const ok = [];
+  for (const h of handles) {
+    let p = await h.queryPermission?.({ mode: "read" });
+    if (p !== "granted" && withPrompt) p = await h.requestPermission?.({ mode: "read" });
+    if (p === "granted") ok.push(h);
+  }
+  S.folderNames = handles.map(h => h.name); S.needsReconnect = ok.length < handles.length;
+  S.scanning = ok.length ? "Scanning…" : ""; render();
+  const r = await scanHandles(ok);
+  S.songs = r.songs.sort((a, b) => a.artist.localeCompare(b.artist) || a.album.localeCompare(b.album) || a.path.localeCompare(b.path));
+  S.videos = r.videos; S.scanning = ""; render();
+}
+
+function filesPicked(list){
+  const songs = [], videos = [];
+  for (const f of list) {
+    const path = f.webkitRelativePath || f.name; const ext = path.split(".").pop().toLowerCase();
+    if (AUDIO_EXT.has(ext)) songs.push(songFromFile(f, path)); else if (VIDEO_EXT.has(ext)) videos.push({ name: f.name, file: f, folder: path.split("/")[0] });
+  }
+  S.songs = S.songs.concat(songs); S.videos = S.videos.concat(videos);
+  S.folderNames = [...new Set(S.folderNames.concat(songs.concat(videos).map(x => (x.path || x.folder || "").split("/")[0])))];
+  render();
+}
+
+// ---------------- items & playback ----------------
+const songItem = s => ({ kind: "song", key: "song:" + s.id, title: s.title, sub: `${s.artist}${s.album ? " · " + s.album : ""}`, song: s });
+const stationItem = st => ({ kind: "station", key: "st:" + st.url, title: st.name, sub: st.city || "Live radio", url: st.url, live: true });
+function resolve(entry){ // playlist entry -> item (songs only when their folder is loaded)
+  if (entry.kind === "station") return stationItem({ name: entry.title, city: entry.sub, url: entry.url });
+  const s = S.songs.find(x => x.id === entry.id); return s ? songItem(s) : null;
+}
+const toEntry = it => it.kind === "station" ? { kind: "station", key: it.key, title: it.title, sub: it.sub, url: it.url } : { kind: "song", key: it.key, id: it.song.id, title: it.title, sub: it.sub };
+
+const audio = $("#main-audio"); audio.volume = .9; let objUrl = null;
+function srcFor(it){
+  if (it.kind === "station") return it.url;
+  if (objUrl) URL.revokeObjectURL(objUrl);
+  return objUrl = URL.createObjectURL(it.song.file);
+}
+function playQueue(items, i){
+  if (!items[i]) return; S.queue = items; S.qi = i; startCurrent();
+}
+function startCurrent(){
+  const it = S.queue[S.qi]; if (!it) return;
+  pauseOthers("main");
+  audio.src = srcFor(it); audio.play().catch(e => setNp(it, "Can't play this (" + (e.name || "error") + ")"));
+  setNp(it); render();
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: it.title, artist: it.sub, album: it.live ? "Live radio" : "AudioVerse" });
+  }
+}
+function setNp(it, err){ $("#npT").textContent = it ? it.title : "Nothing playing"; $("#npD").textContent = err || (it ? (it.live ? "● LIVE · " : "") + it.sub : ""); }
+function step(d){ if (!S.queue.length) return; S.qi = (S.qi + d + S.queue.length) % S.queue.length; startCurrent(); }
+audio.addEventListener("ended", () => step(1));
+audio.addEventListener("play", () => $("#bPlay").textContent = "Pause");
+audio.addEventListener("pause", () => $("#bPlay").textContent = "Play");
+audio.addEventListener("error", () => setNp(S.queue[S.qi], "Can't play this stream or file"));
+audio.addEventListener("timeupdate", () => {
+  const live = !isFinite(audio.duration);
+  $("#tPos").textContent = fmt(audio.currentTime); $("#tDur").textContent = live ? "LIVE" : fmt(audio.duration);
+  if (!seeking) $("#seek").value = live ? 0 : (audio.currentTime / audio.duration * 1000) || 0;
+});
+let seeking = false;
+$("#seek").addEventListener("input", () => seeking = true);
+$("#seek").addEventListener("change", e => { seeking = false; if (isFinite(audio.duration)) audio.currentTime = e.target.value / 1000 * audio.duration; });
+$("#vol").addEventListener("input", e => audio.volume = e.target.value / 100);
+$("#bPlay").onclick = () => { if (!audio.src) { if (S.queue.length) startCurrent(); return; } audio.paused ? (pauseOthers("main"), audio.play()) : audio.pause(); };
+$("#bPrev").onclick = () => audio.currentTime > 3 && isFinite(audio.duration) ? audio.currentTime = 0 : step(-1);
+$("#bNext").onclick = () => step(1);
+if ("mediaSession" in navigator) {
+  navigator.mediaSession.setActionHandler("play", () => audio.play());
+  navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+  navigator.mediaSession.setActionHandler("nexttrack", () => step(1));
+  navigator.mediaSession.setActionHandler("previoustrack", () => step(-1));
+}
+/** One thing at a time, except the two DJ decks which mix. */
+function pauseOthers(who){
+  if (who !== "main") audio.pause();
+  if (who !== "tv") { const v = $("#tvVideo"); v && v.pause(); }
+  if (who !== "watch") { const v = $("#watchVideo"); v && v.pause(); if (S.watch.yt) { S.watch.yt = null; } }
+  if (who !== "dj") DJ.decks.forEach(d => d.el.pause());
+}
+document.addEventListener("keydown", e => {
+  if (e.code === "Space" && !/INPUT|TEXTAREA|SELECT|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); $("#bPlay").click(); }
+});
+
+// ---------------- playlists ----------------
+function inList(pid, key){ return S.playlists.find(p => p.id === pid)?.items.some(e => e.key === key); }
+function toggleFav(it){
+  const fav = S.playlists[0];
+  fav.items = inList(1, it.key) ? fav.items.filter(e => e.key !== it.key) : fav.items.concat(toEntry(it));
+  savePlaylists(); render();
+}
+function addToPlaylist(it){
+  modal(`<h3>Add to playlist</h3><div class="mut">${esc(it.title)}</div><div class="list">${S.playlists.map(p =>
+    `<div class="item" data-act="pladd" data-p="${p.id}"><div class="grow t">${esc(p.name)}</div><span class="mut">${inList(p.id, it.key) ? "added" : p.items.length}</span></div>`).join("")}</div>
+    <div class="row" style="margin-top:8px"><input type="text" id="newPl" placeholder="New playlist" maxlength="40" class="grow"><button data-act="plnew">Create & add</button><button data-act="close">Close</button></div>`);
+  S.pending = it;
+}
+
+// ---------------- radio ----------------
+function radioView(){
+  const { cat, q } = S.radio; let list;
+  if (cat === "featured") list = CATALOG.featured.map(n => stations.find(s => s.name === n)).filter(Boolean);
+  else if (cat === "all") list = stations.filter(s => s.type === "audio");
+  else list = stations.filter(s => s.cat === cat && (!WATCH_CATS.has(s.cat) || s.type === "audio"));
+  const qq = q.trim().toLowerCase();
+  if (qq) list = (cat === "featured" ? stations : list).filter(s => (s.name + " " + s.city + " " + s.tags).toLowerCase().includes(qq));
+  return list;
+}
+
+// ---------------- TV (M3U) ----------------
+function parseM3U(text){
+  const out = []; let name = null, group = null, grp = null, ua = null;
+  for (let raw of text.split(/\r?\n/)) {
+    const line = raw.trim().replace(/^﻿/, ""); if (!line) continue;
+    if (/^#EXTINF/i.test(line)) {
+      const body = line.slice(line.indexOf(":") + 1); let inQ = false, c = -1;
+      for (let i = 0; i < body.length; i++) { if (body[i] === '"') inQ = !inQ; else if (body[i] === "," && !inQ) { c = i; break; } }
+      const head = c >= 0 ? body.slice(0, c) : body; const title = c >= 0 ? body.slice(c + 1).trim() : "";
+      const attrs = {}; head.replace(/([A-Za-z0-9_-]+)="([^"]*)"/g, (_, k, v) => attrs[k.toLowerCase()] = v.trim());
+      name = title || attrs["tvg-name"] || ""; group = attrs["group-title"] || null;
+    } else if (/^#EXTGRP:/i.test(line)) grp = line.slice(8).trim() || null;
+    else if (line.startsWith("#")) continue;
+    else if (isWeb(line)) {
+      if (out.length >= 100000) break;
+      out.push({ i: out.length, name: name || `Channel ${out.length + 1}`, url: line, group: group || grp || "Other" });
+      name = group = grp = null;
+    } else { name = group = grp = null; }
+  }
+  return out;
+}
+async function tvSelect(id){
+  const src = [TRANSMISSION].concat(PRESETS, S.tv.sources).find(s => s.id === id); if (!src) return;
+  Object.assign(S.tv, { sel: id, loading: true, err: "", channels: [], group: null, q: "" }); render();
+  try {
+    if (src.transmission) {
+      const all = S.tv.txCache || (S.tv.txCache = await buildTransmission());
+      const kept = S.tv.showAdult ? all : all.filter(c => !ADULT.test(c.group));
+      Object.assign(S.tv, { channels: kept, hidden: all.length - kept.length, loading: false, err: kept.length ? "" : "Couldn't build Transmission TV right now" });
+      render(); return;
+    }
+    let text = src.text;
+    if (!text) {
+      const r = await fetch(src.url, { credentials: "omit", referrerPolicy: "no-referrer" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      text = await r.text();
+    }
+    const all = parseM3U(text);
+    const kept = S.tv.showAdult ? all : all.filter(c => !ADULT.test(c.group));
+    Object.assign(S.tv, { channels: kept, hidden: all.length - kept.length, loading: false, err: kept.length ? "" : "No channels found" });
+  } catch (e) {
+    S.tv.loading = false;
+    S.tv.err = /HTTP/.test(e.message) ? `The provider answered ${e.message}.` :
+      "Couldn't load this list in the browser. Provider links often block browsers (CORS) or use http on an https page. The free lists work; for a provider list, download the .m3u and use Open file, or use the Android app.";
+  }
+  render();
+}
+let hls = null, mts = null;
+function tvStop(){ try { hls && hls.destroy(); } catch {} try { mts && (mts.unload(), mts.detachMediaElement(), mts.destroy()); } catch {} hls = mts = null; }
+function tvPlay(ch){
+  S.tv.playing = ch; render();
+  const v = $("#tvVideo"); tvStop(); pauseOthers("tv");
+  const url = ch.url, isTs = /\.ts(\?|$)/i.test(url), isHls = /\.m3u8(\?|$)/i.test(url);
+  const fail = msg => { S.tv.perr = msg; const e = $("#tvErr"); if (e) e.textContent = msg; };
+  S.tv.perr = "";
+  if (!isTs && v.canPlayType("application/vnd.apple.mpegurl")) { v.src = url; v.play().catch(() => {}); return; } // Safari: native HLS
+  const tryHls = () => {
+    if (!window.Hls || !Hls.isSupported()) return fail("This browser can't play HLS streams.");
+    hls = new Hls({ lowLatencyMode: true }); hls.loadSource(url); hls.attachMedia(v);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => v.play().catch(() => {}));
+    hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) fail("Can't play this channel (" + d.details + "). It may be offline or block browsers."); });
+  };
+  if ((isTs || !isHls) && window.mpegts && mpegts.getFeatureList().mseLivePlayback) {
+    mts = mpegts.createPlayer({ type: "mpegts", isLive: true, url }, { enableWorker: false });
+    mts.attachMediaElement(v); mts.load(); v.play().catch(() => {});
+    mts.on(mpegts.Events.ERROR, () => { if (!isTs) { tvStop(); tryHls(); } else fail("Can't play this channel. It may be offline or block browsers."); });
+    return;
+  }
+  tryHls();
+}
+function tvStep(d){
+  const list = tvVisible(); const i = list.findIndex(c => c.i === S.tv.playing?.i);
+  if (list.length) tvPlay(list[(i + d + list.length) % list.length]);
+}
+const tvVisible = () => { const q = S.tv.q.trim().toLowerCase(); return S.tv.channels.filter(c => (!S.tv.group || c.group === S.tv.group) && (!q || c.name.toLowerCase().includes(q))); };
+function tvAddLink(name, url){
+  if (!isWeb(url)) return "Paste the full link, starting with http:// or https://";
+  const src = { id: "u" + Date.now(), name: (name || "My IPTV").slice(0, 30), url };
+  S.tv.sources.push(src); tvSelect(src.id); return "";
+}
+function tvAddText(name, text){
+  const src = { id: "u" + Date.now(), name: (name || "Pasted list").slice(0, 30), text }; S.tv.sources.push(src); tvSelect(src.id);
+}
+
+// ---------------- DJ ----------------
+const DJ = {
+  decks: [0, 1].map(n => { const el = new Audio(); el.preservesPitch = true; el.preload = "auto"; return { n, el, item: null, trim: 1, tempo: 1, url: null }; }),
+  gains(x, c){ x = Math.min(1, Math.max(0, x)); if (c === "linear") return [1 - x, x]; if (c === "cut") return [x < .95 ? 1 : 0, x > .05 ? 1 : 0]; return [Math.cos(x * Math.PI / 2), Math.sin(x * Math.PI / 2)]; },
+  apply(){ const [a, b] = this.gains(S.dj.fader, S.dj.curve); const ce = S.dj.curve === "cut" ? .45 : S.dj.curve === "power" ? .63 : .89; // headroom like the app's limiter ceilings
+    this.decks[0].el.volume = Math.min(1, a * this.decks[0].trim * ce); this.decks[1].el.volume = Math.min(1, b * this.decks[1].trim * ce); },
+  load(n, it){ const d = this.decks[n]; if (d.url) URL.revokeObjectURL(d.url); d.url = null;
+    d.item = it; d.el.src = it.kind === "station" ? it.url : (d.url = URL.createObjectURL(it.song.file)); d.el.playbackRate = d.tempo; this.apply(); render(); },
+  toggle(n){ const d = this.decks[n]; if (!d.item) return; if (d.el.paused) { pauseOthers("dj"); d.el.play().catch(() => {}); } else d.el.pause(); },
+  fade(to){ const target = to ? 1 : 0, from = S.dj.fader, dur = S.dj.fadeSec * 1000, t0 = performance.now(); const d = this.decks[to];
+    if (d.item && d.el.paused) { pauseOthers("dj"); d.el.play().catch(() => {}); } S.dj.fading = true; cancelAnimationFrame(this.raf);
+    const tick = now => { const t = Math.min(1, (now - t0) / dur), e = t * t * (3 - 2 * t); S.dj.fader = from + (target - from) * e; this.apply(); syncDj();
+      if (t < 1) this.raf = requestAnimationFrame(tick); else { S.dj.fading = false; this.decks[1 - to].el.pause(); render(); } };
+    this.raf = requestAnimationFrame(tick); }
+};
+DJ.decks.forEach(d => ["play", "pause", "loadedmetadata"].forEach(ev => d.el.addEventListener(ev, render)));
+setInterval(() => { if (S.tab === "dj") syncDj(); }, 250);
+function syncDj(){
+  DJ.decks.forEach(d => { const p = $(`#dpos${d.n}`); if (!p) return; const live = !isFinite(d.el.duration);
+    p.textContent = live ? (d.item ? "● LIVE" : "") : `${fmt(d.el.currentTime)} · −${fmt(d.el.duration - d.el.currentTime)}`;
+    const sk = $(`#dseek${d.n}`); if (sk && !live && document.activeElement !== sk) sk.value = d.el.currentTime / d.el.duration * 1000 || 0; });
+  const f = $("#fader"); if (f && document.activeElement !== f) f.value = S.dj.fader * 1000;
+  const g = $("#gains"); if (g) { const [a, b] = DJ.gains(S.dj.fader, S.dj.curve); g.textContent = `A ${Math.round(a * 100)}% · B ${Math.round(b * 100)}%`; }
+}
+function pickForDeck(n){
+  S.pickDeck = n; S.pickSrc = S.pickSrc || "songs"; S.pickQ = "";
+  renderPicker();
+}
+function renderPicker(){
+  const q = (S.pickQ || "").toLowerCase();
+  const items = (S.pickSrc === "songs" ? S.songs.map(songItem) : S.pickSrc === "lists" ? S.playlists.flatMap(p => p.items.map(resolve)).filter(Boolean) : stations.filter(s => s.type === "audio").map(stationItem))
+    .filter(it => !q || (it.title + " " + it.sub).toLowerCase().includes(q)).slice(0, 500);
+  modal(`<h3>Load deck ${S.pickDeck ? "B" : "A"}</h3>
+    <div class="chips">${[["songs", "Songs"], ["lists", "Playlists"], ["radio", "Radio"]].map(([k, l]) => `<span class="chip ${S.pickSrc === k ? "on" : ""}" data-act="picksrc" data-k="${k}">${l}</span>`).join("")}</div>
+    <input type="search" id="pickQ" placeholder="Search" value="${esc(S.pickQ)}">
+    <div class="list">${items.map((it, i) => `<div class="item" data-act="pick" data-i="${i}"><div class="grow"><div class="t">${esc(it.title)}</div><div class="d">${esc(it.sub)}</div></div>${it.live ? '<span class="badge">LIVE</span>' : ""}</div>`).join("") || '<div class="mut">Nothing here. Add a music folder in Library first.</div>'}</div>
+    <div class="row" style="margin-top:8px"><button data-act="close">Close</button></div>`);
+  S.pickItems = items;
+  const qi = $("#pickQ"); qi.oninput = () => { S.pickQ = qi.value; renderPicker(); $("#pickQ").focus(); $("#pickQ").setSelectionRange(9e3, 9e3); };
+}
+
+// ---------------- modal ----------------
+function modal(html){ $("#modal").innerHTML = html ? `<div class="modal"><div>${html}</div></div>` : ""; }
+
+// ---------------- render ----------------
+function render(){
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === S.tab));
+  const m = $("#main"); const keepScroll = m.scrollTop;
+  const tvVideo = $("#tvVideo"), watchVideo = $("#watchVideo"), ytFrame = $("#ytFrame");
+  m.innerHTML = VIEWS[S.tab]();
+  // Keep live <video> elements playing across re-renders.
+  const slotTv = $("#tvSlot"); if (slotTv && tvVideo) slotTv.replaceWith(tvVideo); else if (slotTv) slotTv.outerHTML = '<video id="tvVideo" controls playsinline></video>';
+  const slotW = $("#watchSlot"); if (slotW && watchVideo) slotW.replaceWith(watchVideo); else if (slotW) slotW.outerHTML = '<video id="watchVideo" controls playsinline></video>';
+  // Keep the Music TV embed from reloading on every redraw.
+  const slotY = $("#ytSlot");
+  if (slotY) {
+    if (ytFrame && ytFrame.dataset.src === slotY.dataset.src) slotY.replaceWith(ytFrame);
+    else { const f = document.createElement("iframe"); f.id = "ytFrame"; f.dataset.src = slotY.dataset.src; f.src = slotY.dataset.src;
+      f.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen"; f.allowFullscreen = true; f.referrerPolicy = "strict-origin-when-cross-origin"; slotY.replaceWith(f); }
+  }
+  m.scrollTop = keepScroll;
+  if (S.tab === "dj") syncDj();
+}
+const itemRow = (it, i, act, on) => `<div class="item ${on ? "on" : ""}" data-act="${act}" data-i="${i}"><div class="grow"><div class="t">${esc(it.title)}</div><div class="d">${esc(it.sub)}</div></div>
+  ${it.live ? '<span class="badge">LIVE</span>' : ""}<button class="icon" data-act="fav" data-i="${i}" title="Favorite">${inList(1, it.key) ? "♥" : "♡"}</button><button class="icon" data-act="add" data-i="${i}" title="Add to playlist">+</button></div>`;
+const playingKey = () => S.queue[S.qi]?.key;
+
+const VIEWS = {
+  library(){
+    const L = S.lib; const views = [["songs", "Songs"], ["artists", "Artists"], ["albums", "Albums"], ["playlists", "Playlists"]];
+    let body = "", items = [];
+    const q = L.q.trim().toLowerCase();
+    if (L.view === "playlists" && L.group == null) {
+      body = `<div class="row"><input type="text" id="plName" placeholder="New playlist name" maxlength="40" class="grow" style="max-width:280px"><button data-act="plcreate">+ New playlist</button></div>` +
+        S.playlists.map(p => `<div class="item" data-act="group" data-g="${p.id}"><div class="grow t">${esc(p.name)}</div><span class="mut">${p.items.length} ›</span></div>`).join("");
+    } else if ((L.view === "artists" || L.view === "albums") && L.group == null) {
+      const key = L.view === "artists" ? "artist" : "album"; const counts = {};
+      S.songs.forEach(s => counts[s[key] || "—"] = (counts[s[key] || "—"] || 0) + 1);
+      body = Object.keys(counts).sort((a, b) => a.localeCompare(b)).filter(k => !q || k.toLowerCase().includes(q))
+        .map(k => `<div class="item" data-act="group" data-g="${esc(k)}"><div class="grow t">${esc(k)}</div><span class="mut">${counts[k]} ›</span></div>`).join("") || '<div class="mut">Nothing yet.</div>';
+    } else {
+      if (L.view === "playlists") { const p = S.playlists.find(p => String(p.id) === String(L.group)); items = p ? p.items.map(resolve).filter(Boolean) : []; }
+      else if (L.view === "artists") items = S.songs.filter(s => s.artist === L.group).map(songItem);
+      else if (L.view === "albums") items = S.songs.filter(s => s.album === L.group).map(songItem);
+      else items = S.songs.map(songItem);
+      if (q) items = items.filter(it => (it.title + " " + it.sub).toLowerCase().includes(q));
+      S.libItems = items;
+      body = items.slice(0, 3000).map((it, i) => itemRow(it, i, "libplay", it.key === playingKey())).join("") ||
+        `<div class="mut">${S.songs.length ? "No matches." : "Add a music folder to start (your Music folder, an external drive like a Samsung T5…)."}</div>`;
+    }
+    const back = L.group != null ? `<div class="row"><button class="link" data-act="group" data-g="">‹ All ${L.view}</button><b>${esc(L.view === "playlists" ? S.playlists.find(p => String(p.id) === String(L.group))?.name : L.group)}</b>
+      ${L.view === "playlists" && String(L.group) !== "1" ? '<button class="link warn" data-act="pldel">Delete playlist</button>' : ""}</div>` : "";
+    return `<div class="row"><div class="grow"><h2>Library</h2><div class="sub ${S.scanning ? "amber" : ""}">${esc(S.scanning || `${S.songs.length} songs · ${S.folderNames.length} folders · ${S.playlists.length} playlists`)}</div></div>
+      <button data-act="addfolder">+ Add music folder</button><button data-act="rescan">Rescan</button></div>
+      ${S.needsReconnect ? '<div class="card">Your saved folders need permission again in this browser session. <button class="pri" data-act="reconnect">Reconnect folders</button></div>' : ""}
+      ${!window.showDirectoryPicker ? '<div class="mut" style="font-size:12px">This browser picks folders once per visit (Chrome or Edge remember them). Files never leave this computer.</div>' : ""}
+      <div class="chips">${views.map(([k, l]) => `<span class="chip ${L.view === k ? "on" : ""}" data-act="libview" data-k="${k}">${l}</span>`).join("")}</div>
+      <input type="search" id="libQ" placeholder="Search your music" value="${esc(L.q)}">
+      ${back}<div class="list">${body}</div>`;
+  },
+  radio(){
+    const list = radioView(); S.radioItems = list;
+    return `<div class="row"><div class="grow"><h2>Radio</h2><div class="sub">Transmission Across the Diaspora · ${stations.filter(s => s.type === "audio").length} live stations</div></div>
+      <button data-act="shuffle">Shuffle</button></div>
+      <input type="search" id="radioQ" placeholder="Search stations, cities, genres" value="${esc(S.radio.q)}">
+      <div class="chips">${RADIO_CATS.map(([k, l]) => `<span class="chip ${S.radio.cat === k ? "on" : ""}" data-act="rcat" data-k="${k}">${l}</span>`).join("")}</div>
+      <div class="list">${list.map((st, i) => st.type === "audio" ? itemRow(stationItem(st), i, "rplay", "st:" + st.url === playingKey())
+        : `<div class="item" data-act="ropen" data-i="${i}"><div class="grow"><div class="t">${esc(st.name)}</div><div class="d">${esc([st.city, st.tags].filter(Boolean).join(" · "))}</div></div><span class="mut">${st.type === "spotify" ? "Spotify ↗" : "Open ↗"}</span></div>`).join("") || '<div class="mut">No stations match.</div>'}</div>`;
+  },
+  tv(){
+    const T = S.tv; const mine = T.sources, cur = [TRANSMISSION].concat(PRESETS, mine).find(s => s.id === T.sel);
+    const groups = {}; T.channels.forEach(c => groups[c.group] = (groups[c.group] || 0) + 1);
+    const vis = tvVisible(); S.tvItems = vis;
+    return `<div class="row"><div class="grow"><h2>TV</h2><div class="sub">${T.loading ? "Loading channels…" : T.channels.length ? `${T.channels.length} channels` : "IPTV playlists (M3U)"}</div></div><button data-act="tvadd">+ Add playlist</button></div>
+      ${mine.length ? `<div class="mut" style="font-size:12px">Your playlists</div><div class="chips">${mine.map(s => `<span class="chip ${T.sel === s.id ? "on" : ""}" data-act="tvsel" data-k="${s.id}">${esc(s.name)}</span>`).join("")}</div>` : ""}
+      ${T.freeOn ? `<div class="row mut" style="font-size:12px"><span class="grow">Free channels (no login, third-party)</span><button class="link" data-act="tvfree" data-k="0">Turn off</button></div>
+      <div class="chips">${[TRANSMISSION].concat(PRESETS).map(s => `<span class="chip ${T.sel === s.id ? "on" : ""}" data-act="tvsel" data-k="${s.id}">${esc(s.name)}</span>`).join("")}</div>`
+      : `<div class="card"><b>Free channel lists</b><div class="mut" style="font-size:12px;margin:4px 0">Transmission TV (our curated lineup) plus six public playlists (IPTV-Org, Free-TV, Pluto TV US, Samsung TV Plus US). Third-party and unofficial: AudioVerse doesn't host or vouch for them, channels come and go, and loading them shows your IP address to the list and stream hosts.</div><button data-act="tvfree" data-k="1">Turn on free lists</button></div>`}
+      ${cur ? `<div class="row mut" style="font-size:12px"><span class="grow">${cur.transmission ? "AudioVerse's own lineup, built in this browser from public lists: Philadelphia, News, Hip-Hop, R&B / Soul, Gospel, African American, Caribbean, Africa." : cur.preset ? "Public, unofficial, community-run list: some channels will be offline." : "This session only. Close the tab and it's gone."}</span>
+        <button class="link" data-act="tvreload">Reload</button>${cur.preset ? "" : '<button class="link" data-act="tvremove">Remove</button>'}</div>` : ""}
+      ${T.hidden || T.showAdult ? `<div class="row mut" style="font-size:12px"><span class="grow">${T.showAdult ? "Adult channels shown" : T.hidden + " adult channels hidden"}</span><button class="link" data-act="tvadult">${T.showAdult ? "Hide" : "Show"}</button></div>` : ""}
+      <div style="${T.playing ? "" : "display:none"}"><div id="tvSlot"></div>
+        <div class="row"><b class="grow">${esc(T.playing?.name || "")}</b><span class="mut" id="tvErr">${esc(T.perr || T.playing?.group || "")}</span>
+        <button class="icon" data-act="tvprev">◀</button><button class="icon" data-act="tvnext">▶</button><button class="icon" data-act="tvstop">✕</button></div></div>
+      ${T.err ? `<div class="card warn">${esc(T.err)}</div>` : ""}
+      ${T.channels.length ? `<input type="search" id="tvQ" placeholder="Search channels" value="${esc(T.q)}">
+        <div class="chips"><span class="chip ${!T.group ? "on" : ""}" data-act="tvgroup" data-k="">All (${T.channels.length})</span>${Object.entries(groups).slice(0, 300).map(([g, n]) => `<span class="chip ${T.group === g ? "on" : ""}" data-act="tvgroup" data-k="${esc(g)}">${esc(g)} (${n})</span>`).join("")}</div>
+        <div class="list">${vis.slice(0, 3000).map((c, i) => `<div class="item ${T.playing?.i === c.i ? "on" : ""}" data-act="tvplay" data-i="${i}"><div class="grow"><div class="t">${esc(c.name)}</div><div class="d">${esc(c.group)}</div></div><span class="badge">${T.playing?.i === c.i ? "ON" : "▶"}</span></div>`).join("")}</div>` : ""}`;
+  },
+  dj(){
+    const deck = d => { const it = d.item, live = it?.live, playing = !d.el.paused;
+      return `<div class="deck ${playing ? "play" : ""}"><h3>DECK ${d.n ? "B" : "A"}</h3>
+        <div class="t" style="font-weight:600;margin-top:4px">${esc(it?.title || "Empty")}</div><div class="mut" style="font-size:12px">${esc(it?.sub || "Load a song or station")}</div>
+        <div class="mut" style="font-size:12px;margin-top:6px" id="dpos${d.n}"></div>
+        ${live || !it ? "" : `<input type="range" id="dseek${d.n}" data-deck="${d.n}" min="0" max="1000" value="0">`}
+        <div class="row" style="margin:8px 0"><button class="pri grow" data-act="dplay" data-n="${d.n}" ${it ? "" : "disabled"}>${playing ? "Pause" : "Play"}</button>
+          <button data-act="dload" data-n="${d.n}">Load</button>${live || !it ? "" : `<button data-act="dcue" data-n="${d.n}">Cue</button><button data-act="dnudge" data-n="${d.n}" data-v="-5">−5s</button><button data-act="dnudge" data-n="${d.n}" data-v="5">+5s</button>`}</div>
+        ${live ? "" : `<div class="mut" style="font-size:12px">Tempo ${d.tempo === 1 ? "0%" : ((d.tempo - 1) * 100).toFixed(1) + "%"} ${d.tempo !== 1 ? `<button class="link" data-act="dtempo0" data-n="${d.n}">reset</button>` : ""}</div>
+          <input type="range" id="dtempo${d.n}" data-deck="${d.n}" min="920" max="1080" step="5" value="${Math.round(d.tempo * 1000)}">`}
+        <div class="mut" style="font-size:12px">Level ${Math.round(d.trim * 100)}%</div><input type="range" id="dtrim${d.n}" data-deck="${d.n}" min="0" max="100" value="${Math.round(d.trim * 100)}"></div>`; };
+    return `<h2>DJ</h2><div class="sub">Two decks and a crossfader. Songs from your folders, or live stations.</div>
+      <div class="decks">${deck(DJ.decks[0])}${deck(DJ.decks[1])}</div>
+      <div class="card"><div class="row"><b class="grow">Crossfader</b><span class="mut" id="gains"></span></div>
+        <div class="row"><b class="amber">A</b><input type="range" id="fader" min="0" max="1000" value="${S.dj.fader * 1000}" class="grow"><b class="amber">B</b></div>
+        <div class="row" style="margin-top:8px"><button class="grow" data-act="fade" data-n="0">← Fade to A</button><button class="grow" data-act="fade" data-n="1">Fade to B →</button></div>
+        <div class="mut" style="font-size:12px;margin-top:8px">${S.dj.fading ? "Blending…" : "Fade time"}</div>
+        <div class="chips">${[4, 8, 16, 32].map(s => `<span class="chip ${S.dj.fadeSec === s ? "on" : ""}" data-act="fadesec" data-k="${s}">${s}s</span>`).join("")}</div>
+        <div class="mut" style="font-size:12px">Curve</div>
+        <div class="chips">${[["power", "Smooth blend"], ["linear", "Linear"], ["cut", "Scratch cut"]].map(([k, l]) => `<span class="chip ${S.dj.curve === k ? "on" : ""}" data-act="curve" data-k="${k}">${l}</span>`).join("")}</div></div>
+      <div class="mut" style="font-size:12px">Tip: load the next song on the idle deck, press Play, then Fade. The deck that fades out stops by itself.</div>`;
+  },
+  watch(){
+    const tv = stations.filter(s => s.type === "tv" && s.ytChannel), more = stations.filter(s => WATCH_CATS.has(s.cat) && s.type !== "tv");
+    const yt = tv.find(s => s.ytChannel === S.watch.yt);
+    const list = "UU" + (S.watch.yt || "").replace(/[^A-Za-z0-9_-]/g, "").replace(/^UC/, "");
+    return `<h2>Watch</h2><div class="sub">Music TV and your videos</div>
+      ${yt ? `<div id="ytSlot" data-src="https://www.youtube-nocookie.com/embed/videoseries?list=${list}&amp;rel=0"></div>
+        <div class="row"><b class="grow">${esc(yt.name)}</b><button class="link" data-act="ytopen">Open on YouTube ↗</button><button class="link" data-act="ytclose">Close</button></div>` : ""}
+      <div style="${S.watch.video ? "" : "display:none"}"><div id="watchSlot"></div><div class="mut">${esc(S.watch.video?.name || "")}</div></div>
+      <div class="card"><b>Play a video from this computer</b><div class="row" style="margin-top:8px"><button data-act="vidopen">Open a video</button></div></div>
+      ${S.videos.length ? `<h3>Videos from your folders (${S.videos.length})</h3><div class="list">${S.videos.map((v, i) => `<div class="item" data-act="vidplay" data-i="${i}"><div class="grow"><div class="t">${esc(v.name)}</div><div class="d">${esc(v.folder)}</div></div><span class="badge">PLAY</span></div>`).join("")}</div>` : ""}
+      <h3>Music TV</h3><div class="list">${tv.map((s, i) => `<div class="item ${S.watch.yt === s.ytChannel ? "on" : ""}" data-act="yt" data-i="${i}"><div class="grow"><div class="t">${esc(s.name)}</div><div class="d">${esc(s.tags)}</div></div><span class="badge">PLAY</span></div>`).join("")}</div>
+      <h3>More to watch</h3><div class="list">${more.map((s, i) => `<div class="item" data-act="wopen" data-i="${i}"><div class="grow"><div class="t">${esc(s.name)}</div><div class="d">${esc([s.city, s.tags].filter(Boolean).join(" · "))}</div></div><span class="mut">Open ↗</span></div>`).join("")}</div>`;
+  }
+};
+
+// ---------------- events ----------------
+$("#nav").addEventListener("click", e => {
+  const t = e.target.closest("button[data-tab]"); if (!t || t.dataset.tab === S.tab) return;
+  // Leaving a video screen stops its player (it isn't kept in the background).
+  if (S.tab === "tv") { tvStop(); const v = $("#tvVideo"); v && v.pause(); S.tv.playing = null; }
+  if (S.tab === "watch") { const v = $("#watchVideo"); v && v.pause(); S.watch.video = null; S.watch.yt = null; }
+  S.tab = t.dataset.tab; store.set("av.tab", S.tab); render();
+});
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const a = el.dataset.act, i = +el.dataset.i, k = el.dataset.k, n = +el.dataset.n;
+  const libIt = () => S.libItems[i], radIt = () => stationItem(S.radioItems[i]);
+  switch (a) {
+    case "addfolder": addFolder(); break;
+    case "rescan": rescan(false); break;
+    case "reconnect": rescan(true); break;
+    case "libview": Object.assign(S.lib, { view: k, group: null }); render(); break;
+    case "group": S.lib.group = el.dataset.g === "" ? null : el.dataset.g; render(); break;
+    case "libplay": playQueue(S.libItems, i); break;
+    case "fav": toggleFav(S.tab === "radio" ? radIt() : libIt()); break;
+    case "add": addToPlaylist(S.tab === "radio" ? radIt() : libIt()); break;
+    case "pladd": { const p = S.playlists.find(p => p.id === +el.dataset.p); if (p && !inList(p.id, S.pending.key)) { p.items.push(toEntry(S.pending)); savePlaylists(); } modal(""); render(); break; }
+    case "plnew": { const nm = $("#newPl").value.trim().slice(0, 40); if (!nm) break; S.playlists.push({ id: Date.now(), name: nm, items: [toEntry(S.pending)] }); savePlaylists(); modal(""); render(); break; }
+    case "plcreate": { const nm = $("#plName").value.trim().slice(0, 40); if (nm) { S.playlists.push({ id: Date.now(), name: nm, items: [] }); savePlaylists(); render(); } break; }
+    case "pldel": S.playlists = S.playlists.filter(p => String(p.id) !== String(S.lib.group) || p.id === 1); savePlaylists(); S.lib.group = null; render(); break;
+    case "close": modal(""); break;
+    case "rcat": S.radio.cat = k; render(); break;
+    case "rplay": { const pl = S.radioItems.filter(s => s.type === "audio"); playQueue(pl.map(stationItem), pl.indexOf(S.radioItems[i])); break; }
+    case "ropen": openExternal(S.radioItems[i].url); break;
+    case "shuffle": { const pl = radioView().filter(s => s.type === "audio"); if (pl.length) playQueue(pl.map(stationItem), Math.floor(Math.random() * pl.length)); break; }
+    case "tvsel": tvSelect(k); break;
+    case "tvreload": if (S.tv.sel === "tx") S.tv.txCache = null; tvSelect(S.tv.sel); break;
+    case "tvfree": S.tv.freeOn = k === "1"; store.set("av.tv.free", S.tv.freeOn); if (S.tv.freeOn && !S.tv.sel) { tvSelect("tx"); break; } if (!S.tv.freeOn && /^(p|tx)/.test(String(S.tv.sel))) { tvStop(); Object.assign(S.tv, { sel: null, channels: [], err: "", playing: null }); } render(); break;
+    case "tvremove": S.tv.sources = S.tv.sources.filter(s => s.id !== S.tv.sel); Object.assign(S.tv, { sel: null, channels: [], err: "" }); render(); break;
+    case "tvadult": S.tv.showAdult = !S.tv.showAdult; store.set("av.tv.adult", S.tv.showAdult); tvSelect(S.tv.sel); break;
+    case "tvgroup": S.tv.group = k || null; render(); break;
+    case "tvplay": tvPlay(S.tvItems[i]); break;
+    case "tvprev": tvStep(-1); break; case "tvnext": tvStep(1); break;
+    case "tvstop": tvStop(); { const v = $("#tvVideo"); v && (v.pause(), v.removeAttribute("src"), v.load()); } S.tv.playing = null; render(); break;
+    case "tvadd": modal(`<h3>Add a playlist</h3>
+      <div class="mut" style="font-size:12px">Paste an M3U link, paste M3U text / a list of links, or open an .m3u file. Provider links often block browsers; the Android app has no such limit.</div>
+      <input type="text" id="tvName" placeholder="Name (e.g. Gamma)" maxlength="30" style="margin-top:8px">
+      <input type="password" id="tvUrl" placeholder="M3U link" style="margin-top:6px" autocomplete="off">
+      <div class="mut" style="font-size:12px;margin-top:6px">Kept for this tab only and never saved in the browser, so your login doesn't stay on this computer. For a saved, encrypted list use the Android app.</div>
+      <div class="row" style="margin-top:8px"><button class="pri" data-act="tvsave">Save link</button><button data-act="tvfile">Open .m3u / .txt file</button></div>
+      <textarea id="tvPaste" placeholder="…or paste M3U text or links here (one per line)" style="margin-top:10px"></textarea>
+      <div class="row" style="margin-top:6px"><button data-act="tvpaste">Import pasted list</button><span class="grow"></span><button data-act="close">Close</button></div><div class="warn" id="tvAddErr"></div>`); break;
+    case "tvsave": { const err = tvAddLink($("#tvName").value.trim(), $("#tvUrl").value.trim()); if (err) $("#tvAddErr").textContent = err; else modal(""); break; }
+    case "tvpaste": { const t = $("#tvPaste").value; const nm = $("#tvName").value.trim(); if (!t.trim()) break;
+      if (/#EXTINF/i.test(t)) tvAddText(nm, t);
+      else { const links = t.split(/\r?\n/).map(l => l.trim()).filter(l => /https?:\/\//i.test(l) && !l.startsWith("#"));
+        const lists = [], chans = [];
+        links.forEach(l => { const at = Math.max(l.toLowerCase().lastIndexOf("http://"), l.toLowerCase().lastIndexOf("https://")); const url = l.slice(at).split(" ")[0]; const label = l.slice(0, at).replace(/[\s,|;:\-]+$/, "").trim();
+          (/\.m3u(\?|$)|get\.php|type=m3u|output=m3u/i.test(url) ? lists : chans).push([label, url]); });
+        lists.forEach(([label, url], j) => S.tv.sources.push({ id: "u" + Date.now() + j, name: (label || nm || "Playlist " + (j + 1)).slice(0, 30), url }));
+        if (chans.length) tvAddText(nm || "Pasted channels", "#EXTM3U\n" + chans.map(([l, u], j) => `#EXTINF:-1,${l || "Channel " + (j + 1)}\n${u}`).join("\n"));
+        else if (lists.length) tvSelect(S.tv.sources[S.tv.sources.length - 1].id);
+        if (!lists.length && !chans.length) { $("#tvAddErr").textContent = "No links found"; break; } }
+      modal(""); break; }
+    case "tvfile": $("#m3uInput").click(); break;
+    case "dplay": DJ.toggle(n); break;
+    case "dload": pickForDeck(n); break;
+    case "dcue": DJ.decks[n].el.pause(); DJ.decks[n].el.currentTime = 0; break;
+    case "dnudge": DJ.decks[n].el.currentTime = Math.max(0, DJ.decks[n].el.currentTime + +el.dataset.v); break;
+    case "dtempo0": DJ.decks[n].tempo = 1; DJ.decks[n].el.playbackRate = 1; render(); break;
+    case "fade": DJ.fade(n); break;
+    case "fadesec": S.dj.fadeSec = +k; render(); break;
+    case "curve": S.dj.curve = k; DJ.apply(); render(); break;
+    case "picksrc": S.pickSrc = k; renderPicker(); break;
+    case "pick": DJ.load(S.pickDeck, S.pickItems[i]); modal(""); break;
+    case "yt": pauseOthers("watch"); S.watch.yt = stations.filter(s => s.type === "tv" && s.ytChannel)[i].ytChannel; render(); break;
+    case "ytopen": openExternal(stations.find(s => s.ytChannel === S.watch.yt)?.url); break;
+    case "ytclose": S.watch.yt = null; render(); break;
+    case "wopen": openExternal(stations.filter(s => WATCH_CATS.has(s.cat) && s.type !== "tv")[i].url); break;
+    case "vidopen": $("#vidInput").click(); break;
+    case "vidplay": playVideo(S.videos[i].file); break;
+  }
+});
+document.addEventListener("input", e => {
+  const t = e.target, id = t.id;
+  if (id === "libQ") { S.lib.q = t.value; refocus(id); }
+  else if (id === "radioQ") { S.radio.q = t.value; refocus(id); }
+  else if (id === "tvQ") { S.tv.q = t.value; refocus(id); }
+  else if (id === "fader") { cancelAnimationFrame(DJ.raf); S.dj.fading = false; let x = t.value / 1000; if (Math.abs(x - .5) < .025) x = .5; S.dj.fader = x; DJ.apply(); syncDj(); }
+  else if (id.startsWith("dtempo")) { const d = DJ.decks[+t.dataset.deck]; d.tempo = Math.round(t.value / 5) * 5 / 1000; d.el.playbackRate = d.tempo; }
+  else if (id.startsWith("dtrim")) { DJ.decks[+t.dataset.deck].trim = t.value / 100; DJ.apply(); }
+  else if (id.startsWith("dseek")) { const d = DJ.decks[+t.dataset.deck]; if (isFinite(d.el.duration)) d.el.currentTime = t.value / 1000 * d.el.duration; }
+});
+document.addEventListener("change", e => { if (/^dtempo|^dtrim/.test(e.target.id)) render(); });
+function refocus(id){ render(); const el = $("#" + id); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }
+let vidUrl = null;
+function playVideo(file){ pauseOthers("watch"); S.watch.video = { name: file.name }; render(); const v = $("#watchVideo"); if (vidUrl) URL.revokeObjectURL(vidUrl); v.src = vidUrl = URL.createObjectURL(file); v.play().catch(() => {}); }
+
+// hidden pickers
+document.body.insertAdjacentHTML("beforeend", `<input type="file" id="dirInput" webkitdirectory multiple hidden>
+  <input type="file" id="m3uInput" accept=".m3u,.m3u8,.txt,audio/x-mpegurl,application/x-mpegurl,text/plain" hidden>
+  <input type="file" id="vidInput" accept="video/*" hidden>`);
+$("#dirInput").onchange = e => filesPicked(e.target.files);
+$("#vidInput").onchange = e => e.target.files[0] && playVideo(e.target.files[0]);
+$("#m3uInput").onchange = async e => { const f = e.target.files[0]; if (!f) return; const t = await f.text(); modal("");
+  if (/#EXTINF/i.test(t)) tvAddText(f.name.replace(/\.(m3u8?|txt)$/i, ""), t);
+  else { tvAddText(f.name.replace(/\.(m3u8?|txt)$/i, ""), "#EXTM3U\n" + t.split(/\r?\n/).filter(l => /^https?:\/\//i.test(l.trim())).map((u, j) => `#EXTINF:-1,Channel ${j + 1}\n${u.trim()}`).join("\n")); }
+  e.target.value = ""; };
+
+render();
+rescan(false);
+</script>
+</body>
+</html>

@@ -30,6 +30,7 @@ class CredentialStore(context: Context) {
         put(K_TUNNEL_HOST, config.tunnelHost)
         put(K_CF_ID, config.cfClientId)
         put(K_CF_SECRET, config.cfClientSecret)
+        put(K_PRIVATE_HOST, config.privateHost)
     }
 
     fun load(): AuthConfig = AuthConfig(
@@ -38,13 +39,14 @@ class CredentialStore(context: Context) {
         tunnelHost = get(K_TUNNEL_HOST),
         cfClientId = get(K_CF_ID),
         cfClientSecret = get(K_CF_SECRET),
-        deviceId = deviceId()
+        deviceId = deviceId(),
+        privateHost = get(K_PRIVATE_HOST)
     )
 
     fun clear() {
         prefs.edit()
             .remove(K_JF_HOST).remove(K_JF_TOKEN).remove(K_TUNNEL_HOST)
-            .remove(K_CF_ID).remove(K_CF_SECRET)
+            .remove(K_CF_ID).remove(K_CF_SECRET).remove(K_PRIVATE_HOST)
             .apply()
     }
 
@@ -101,5 +103,6 @@ class CredentialStore(context: Context) {
         const val K_CF_ID = "cf_id"
         const val K_CF_SECRET = "cf_secret"
         const val K_DEVICE_ID = "device_id"
+        const val K_PRIVATE_HOST = "private_host"
     }
 }
