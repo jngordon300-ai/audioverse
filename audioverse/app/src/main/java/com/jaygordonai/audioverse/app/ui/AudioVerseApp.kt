@@ -100,7 +100,7 @@ fun AudioVerseApp(
 
     // Full-screen video (Music TV or a phone video) hides the bars.
     var immersive by remember { mutableStateOf(false) }
-    LaunchedEffect(s.screen) { if (s.screen != Screen.VIDEO) immersive = false }
+    LaunchedEffect(s.screen) { if (s.screen != Screen.VIDEO && s.screen != Screen.DJ) immersive = false }
 
     Surface(color = AV.Ground, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().then(if (immersive) Modifier else Modifier.statusBarsPadding().navigationBarsPadding())) {
@@ -109,7 +109,7 @@ fun AudioVerseApp(
                     Screen.LIBRARY -> LibraryScreen(s, vm, onGrant = { launcher.launch(permission) })
                     Screen.RADIO -> RadioScreen(s, vm)
                     Screen.NOW_PLAYING -> NowPlayingScreen(s, vm)
-                    Screen.DJ -> DjScreen(s, djVm())
+                    Screen.DJ -> DjScreen(s, djVm(), onImmersive = { immersive = it }, onExit = { vm.show(Screen.LIBRARY) })
                     Screen.VIDEO -> VideoHub(s, videoVm(), iptvVm(), onImmersive = { immersive = it }, onModeHandled = vm::consumeVideoModeRequest, onAddFolder = vm::addFolder)
                     Screen.SOUND -> SoundScreen(s, vm)
                     Screen.DIAGNOSTICS -> ValuesTheme { GateScreen(gateVm()) }
