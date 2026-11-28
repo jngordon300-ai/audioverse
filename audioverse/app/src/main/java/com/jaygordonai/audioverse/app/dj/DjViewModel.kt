@@ -264,6 +264,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         d.applySound()
+        _ui.update { it.copy(message = "Deck ${id.name}: ${t.title}") }
         d.analyzeJob?.cancel()
         if (!t.live) d.analyzeJob = viewModelScope.launch {
             val wf = WaveformAnalyzer.analyze(ctx, t.uri)

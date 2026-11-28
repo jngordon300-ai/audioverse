@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -99,6 +102,7 @@ private fun deckColor(id: DeckId) = if (id == DeckId.A) DeckBlue else DeckRed
 fun DjScreen(s: PlayerUi, vm: DjViewModel, onImmersive: (Boolean) -> Unit = {}, onExit: () -> Unit = {}) {
     val d by vm.ui.collectAsStateWithLifecycle()
     var drawer by remember { mutableStateOf<String?>(null) } // "BROWSER" | "SAMPLER"
+    var target by remember { mutableStateOf(DeckId.A) } // deck the browser loads to
     val activity = LocalContext.current as? Activity
     val view = LocalView.current
 
@@ -122,21 +126,21 @@ fun DjScreen(s: PlayerUi, vm: DjViewModel, onImmersive: (Boolean) -> Unit = {}, 
     LaunchedEffect(d.message) { if (d.message != null) { kotlinx.coroutines.delay(3000); vm.clearMessage() } }
     BackHandler { if (drawer != null) drawer = null else onExit() }
 
-    Box(Modifier.fillMaxSize().background(AV.Ground)) {
+    Box(Modifier.fillMaxSize().background(AV.Ground).windowInsetsPadding(WindowInsets.displayCutout)) {
         Column(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             TopBar(d, drawer, onExit = onExit, onDrawer = { drawer = if (drawer == it) null else it; if (it == "SAMPLER") vm.warmSampler() }, onClearCues = vm::toggleClearCues)
             WaveLane(d.a, DeckId.A, Modifier.fillMaxWidth().height(40.dp))
             WaveLane(d.b, DeckId.B, Modifier.fillMaxWidth().height(40.dp))
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                DeckPanel(d.a, DeckId.A, d.clearCues, vm, Modifier.weight(1f).fillMaxHeight()) { drawer = "BROWSER" }
+                DeckPanel(d.a, DeckId.A, d.clearCues, vm, Modifier.weight(1f).fillMaxHeight()) { target = DeckId.A; drawer = "BROWSER" }
                 MixerPanel(d, vm, Modifier.weight(0.95f).fillMaxHeight())
-                DeckPanel(d.b, DeckId.B, d.clearCues, vm, Modifier.weight(1f).fillMaxHeight()) { drawer = "BROWSER" }
+                DeckPanel(d.b, DeckId.B, d.clearCues, vm, Modifier.weight(1f).fillMaxHeight()) { target = DeckId.B; drawer = "BROWSER" }
             }
         }
         if (drawer != null) {
             Box(Modifier.fillMaxSize().background(Color(0x99000000)).clickable { drawer = null })
             Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.62f)) {
-                if (drawer == "BROWSER") BrowserPanel(s, onLoad = { id, t -> vm.load(id, t) })
+                if (drawer == "BROWSER") BrowserPanel(s, target, onTarget = { target = it }, onLoad = { id, t -> vm.load(id, t); drawer = null })
                 else SamplerPanel(d.samplerVolume, onPad = vm::pad, onVolume = vm::setSamplerVolume)
             }
         }
@@ -534,7 +538,7 @@ private fun VFader(value: Float, onChange: (Float) -> Unit, onReset: () -> Unit,
 
 /** Songs / Playlists / Radio with search; each row loads to deck A or B. */
 @Composable
-private fun BrowserPanel(s: PlayerUi, onLoad: (DeckId, Track) -> Unit) {
+private fun BrowserPanel(s: PlayerUi, target: DeckId, onTarget: (DeckId) -> Unit, onLoad: (DeckId, Track) -> Unit) {
     var source by remember { mutableStateOf("SONGS") }
     var query by remember { mutableStateOf("") }
     val q = query.trim().lowercase()
@@ -553,6 +557,10 @@ private fun BrowserPanel(s: PlayerUi, onLoad: (DeckId, Track) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("LOAD TO", color = AV.TextMuted, fontSize = 11.sp)
+            Pill("DECK A", DeckBlue, active = target == DeckId.A, onClick = { onTarget(DeckId.A) })
+            Pill("DECK B", DeckRed, active = target == DeckId.B, onClick = { onTarget(DeckId.B) })
+            Spacer(Modifier.width(6.dp))
             for ((k, l) in listOf("SONGS" to "Songs", "FAVS" to "Playlists", "RADIO" to "Radio")) Pill(l, AV.Amber, active = source == k, onClick = { source = k })
             Box(Modifier.weight(1f).height(28.dp).clip(RoundedCornerShape(6.dp)).background(Panel2).padding(horizontal = 8.dp), contentAlignment = Alignment.CenterStart) {
                 if (query.isEmpty()) Text("Search title, artist, album, folder", color = AV.TextMuted, fontSize = 12.sp)
@@ -568,7 +576,7 @@ private fun BrowserPanel(s: PlayerUi, onLoad: (DeckId, Track) -> Unit) {
         if (list.isEmpty()) Text("Nothing here.", color = AV.TextMuted, fontSize = 12.sp, textAlign = TextAlign.Start)
         LazyColumn(Modifier.weight(1f)) {
             itemsIndexed(list, key = { i, t -> "$i:${t.id}" }) { _, t ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).clickable { onLoad(target, t) }.padding(vertical = 3.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Pill("A", DeckBlue, onClick = { onLoad(DeckId.A, t) })
                     Column(Modifier.weight(1f)) {
                         Text(t.title, color = AV.Text, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
