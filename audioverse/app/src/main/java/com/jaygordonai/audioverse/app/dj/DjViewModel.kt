@@ -60,7 +60,10 @@ data class DeckUi(
     val loopOut: Long? = null,
     val loopActive: Boolean = false,
     val loopBeats: Int = 4,
-    val level: Float = 0f
+    val level: Float = 0f,
+    /** VINYL on: touching the platter grabs the record (scratch / rewind). Off: platter bends tempo. */
+    val vinyl: Boolean = true,
+    val scratching: Boolean = false
 ) {
     /** BPM as heard (after the tempo slider). */
     val liveBpm: Float get() = bpm * tempo
@@ -160,6 +163,8 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         val player get() = backend.player
         var analyzeJob: Job? = null
         var bendBase: Float? = null
+        val scratch = ScratchEngine()
+        var resumeAfterScratch = false
 
         init {
             applySound()
@@ -212,12 +217,14 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
             while (isActive) {
                 for (d in listOf(deckA, deckB)) {
                     val p = d.player
+                    val scratching = d.scratch.active
                     d.edit {
                         it.copy(
-                            positionMs = p.currentPosition.coerceAtLeast(0),
+                            positionMs = if (scratching) d.scratch.positionMs else p.currentPosition.coerceAtLeast(0),
                             durationMs = p.duration.takeIf { x -> x != C.TIME_UNSET } ?: 0,
                             limiting = d.dsp.limiterGainReductionDb < -0.5f,
-                            level = if (p.isPlaying) levelAt(it, p.currentPosition) * p.volume else 0f
+                            level = if (p.isPlaying) levelAt(it, p.currentPosition) * p.volume
+                                else if (scratching) levelAt(it, d.scratch.positionMs) * d.scratch.volume else 0f
                         )
                     }
                 }
@@ -230,7 +237,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
                 for (d in listOf(deckA, deckB)) {
                     val s = d.state()
                     val inMs = s.loopIn; val outMs = s.loopOut
-                    if (s.loopActive && inMs != null && outMs != null && outMs > inMs && d.player.currentPosition >= outMs) {
+                    if (!d.scratch.active && s.loopActive && inMs != null && outMs != null && outMs > inMs && d.player.currentPosition >= outMs) {
                         d.player.seekTo(inMs)
                     }
                 }
@@ -251,6 +258,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
 
     fun load(id: DeckId, t: Track) {
         val d = deck(id)
+        if (d.scratch.active) d.scratch.stop()
         d.player.setMediaItem(
             MediaItem.Builder().setUri(com.jaygordonai.audioverse.app.server.HomeServer.resolve(t.uri)).setMediaId(t.id.toString())
                 .setMediaMetadata(MediaMetadata.Builder().setTitle(t.title).setArtist(t.artist).build())
@@ -260,7 +268,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         d.edit {
             it.copy(
                 track = t, error = null, positionMs = 0, waveform = null, bpm = 0f, firstBeatMs = 0,
-                cues = loadCues(t), loopIn = null, loopOut = null, loopActive = false, analyzing = !t.live
+                scratching = false, cues = loadCues(t), loopIn = null, loopOut = null, loopActive = false, analyzing = !t.live
             )
         }
         d.applySound()
@@ -379,9 +387,29 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- Jog wheel ----------------
 
-    /** Turning the platter: scrub when paused, bend the tempo while held when playing. */
+    /**
+     * Finger down on the platter. VINYL on and the track decoded: grab the record — the deck stops
+     * under the hand and the scratch engine plays wherever the hand moves it, backwards included.
+     */
+    fun jogTouch(id: DeckId) {
+        val d = deck(id); val s = d.state()
+        if (!s.vinyl || d.player.mediaItemCount == 0) return
+        val pcm = s.waveform?.pcm
+        if (pcm == null) {
+            _ui.update { it.copy(message = if (s.analyzing) "Scratch ready after analysis…" else "Scratch needs a phone, USB or SD file") }
+            return
+        }
+        d.resumeAfterScratch = d.player.isPlaying
+        val vol = currentVolume(id)
+        d.player.pause()
+        d.scratch.start(pcm, d.player.currentPosition, vol)
+        d.edit { it.copy(scratching = true) }
+    }
+
+    /** Turning the platter: scratch (VINYL), else scrub when paused, bend the tempo while playing. */
     fun jog(id: DeckId, degrees: Float) {
         val d = deck(id)
+        if (d.scratch.active) { d.scratch.move(ScratchMath.degreesToMs(degrees)); return }
         if (!d.player.isPlaying) { nudge(id, (degrees / 360f * 1800f).toLong()); return }
         val base = d.bendBase ?: d.state().tempo.also { d.bendBase = it }
         val bend = (degrees / 20f).coerceIn(-0.12f, 0.12f)
@@ -390,9 +418,18 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
 
     fun jogRelease(id: DeckId) {
         val d = deck(id)
+        if (d.scratch.active) {
+            val pos = d.scratch.stop()
+            d.player.seekTo(pos)
+            if (d.resumeAfterScratch) { pauseMainPlayer(); d.player.play() }
+            d.edit { it.copy(scratching = false, positionMs = pos) }
+            return
+        }
         d.bendBase?.let { d.player.playbackParameters = PlaybackParameters(it, 1f) }
         d.bendBase = null
     }
+
+    fun toggleVinyl(id: DeckId) = deck(id).edit { it.copy(vinyl = !it.vinyl) }
 
     // ---------------- Mixer ----------------
 
@@ -434,6 +471,14 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         val (va, vb) = DjMath.volumes(s.fader, s.curve, s.a.trim, s.b.trim)
         deckA.player.volume = va
         deckB.player.volume = vb
+        deckA.scratch.volume = va
+        deckB.scratch.volume = vb
+    }
+
+    private fun currentVolume(id: DeckId): Float {
+        val s = _ui.value
+        val (va, vb) = DjMath.volumes(s.fader, s.curve, s.a.trim, s.b.trim)
+        return if (id == DeckId.A) va else vb
     }
 
     // ---------------- Sampler ----------------
@@ -448,10 +493,11 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         try { PlayerHolder.get(ctx).backend.player.pause() } catch (_: Exception) { }
     }
 
-    fun stopAll() { fadeJob?.cancel(); deckA.player.pause(); deckB.player.pause() }
+    fun stopAll() { fadeJob?.cancel(); deckA.scratch.stop(); deckB.scratch.stop(); deckA.player.pause(); deckB.player.pause() }
 
     override fun onCleared() {
         fadeJob?.cancel()
+        deckA.scratch.stop(); deckB.scratch.stop()
         deckA.backend.release()
         deckB.backend.release()
         if (samplerUsed) try { sampler.release() } catch (_: Exception) { }

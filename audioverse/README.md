@@ -6,9 +6,9 @@ Personal audiophile and DJ platform for Android (Samsung Galaxy S26 Ultra + Gala
 
 Architecture: *AudioVerse — Architecture Plan v1.2* (claude.ai doc). Engine: AndroidX Media3, with libVLC as a fallback backend later on.
 
-## Current build: v0.14.0-alpha
+## Current build: v0.14.2-alpha
 
-v0.14: **DJ Pro**, a landscape, VirtualDJ-style layout. Scrolling waveforms for both decks (bass in blue, beat grid, cue and loop markers); Deck A | Mixer | Deck B. Each deck: BPM detected on the phone, jog platter (scrub when paused, bend while playing), tempo fader ±8 %, SYNC (tempo up to ±16 % incl. double / half time, then beat alignment), CUE / PLAY, 8 hot cues saved per track, loop IN / OUT and 1-2-4-8 beat loops. Mixer: GAIN, HIGH / MID / LOW (kill to −26 dB), FILTER (low-pass left, high-pass right), ECHO (dotted 1/8 at the deck's tempo), channel faders with meters, crossfader with curves and timed fades. Browser (songs, playlists, radio, search, load to A or B) and an 8-pad sampler slide up from the bottom. Waveforms and BPM cover phone, USB and SD files; streams and home-server tracks play without them.
+v0.14: **DJ Pro**, a landscape, VirtualDJ-style layout. Scrolling waveforms for both decks (bass in blue, beat grid, cue and loop markers); Deck A | Mixer | Deck B. Each deck: BPM detected on the phone, vinyl jog platter (VINYL on: grab the record to scratch forward and back or rewind, let go to carry on; VINYL off: scrub / bend), tempo fader ±8 %, SYNC (tempo up to ±16 % incl. double / half time, then beat alignment), CUE / PLAY, 8 hot cues saved per track, loop IN / OUT and 1-2-4-8 beat loops. Mixer: GAIN, HIGH / MID / LOW (kill to −26 dB), FILTER (low-pass left, high-pass right), ECHO (dotted 1/8 at the deck's tempo), channel faders with meters, crossfader with curves and timed fades. Browser (songs, playlists, radio, search, load to A or B) and an 8-pad sampler slide up from the bottom. Waveforms and BPM cover phone, USB and SD files; streams and home-server tracks play without them.
 
 ### v0.13.0-alpha
 

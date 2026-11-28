@@ -20,8 +20,18 @@ import kotlin.math.max
  * One loaded track's waveform: [peaks] (0..1) and [bass] (share of low-frequency energy, 0..1,
  * used for colouring) at [FPS] points per second, plus the detected beat grid.
  */
-class Waveform(val peaks: FloatArray, val bass: FloatArray, val beat: BeatInfo?) {
-    companion object { const val FPS = 100 }
+class Waveform(
+    val peaks: FloatArray,
+    val bass: FloatArray,
+    val beat: BeatInfo?,
+    /** Mono 16-bit copy of the audio at [PCM_RATE] for vinyl scratching (first [PCM_MAX_SECONDS]); null if none. */
+    val pcm: ShortArray? = null
+) {
+    companion object {
+        const val FPS = 100
+        const val PCM_RATE = 22_050
+        const val PCM_MAX_SECONDS = 10 * 60
+    }
 }
 
 /**
@@ -32,8 +42,9 @@ class Waveform(val peaks: FloatArray, val bass: FloatArray, val beat: BeatInfo?)
 object WaveformAnalyzer {
 
     private const val MAX_SECONDS = 20 * 60
-    private val cache = object : LinkedHashMap<String, Waveform>(8, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Waveform>?) = size > 8
+    // Each entry can hold up to ~26 MB of scratch audio: keep both decks plus one spare.
+    private val cache = object : LinkedHashMap<String, Waveform>(4, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Waveform>?) = size > 3
     }
 
     suspend fun analyze(context: Context, uri: Uri): Waveform? = withContext(Dispatchers.Default) {
@@ -65,6 +76,12 @@ object WaveformAnalyzer {
             var inputDone = false; var outputDone = false
             var totalFrames = 0L
             val maxFrames = MAX_SECONDS.toLong() * rate
+            // Scratch copy: box-averaged down to PCM_RATE mono.
+            val pcmMax = Waveform.PCM_MAX_SECONDS * Waveform.PCM_RATE
+            val durUs = if (fmt.containsKey(MediaFormat.KEY_DURATION)) fmt.getLong(MediaFormat.KEY_DURATION) else 0L
+            var pcm = ShortArray(((durUs / 1_000_000.0 + 2) * Waveform.PCM_RATE).toInt().coerceIn(Waveform.PCM_RATE * 10, pcmMax))
+            var pcmLen = 0
+            var pcmAcc = 0f; var pcmCnt = 0; var pcmPhase = 0L
 
             while (!outputDone) {
                 coroutineContext.ensureActive()
@@ -93,6 +110,15 @@ object WaveformAnalyzer {
                         var m = 0f
                         for (c in 0 until channels) m += if (floatPcm) out.float else out.short / 32768f
                         m /= channels
+                        pcmAcc += m; pcmCnt++; pcmPhase += Waveform.PCM_RATE
+                        if (pcmPhase >= rate) {
+                            pcmPhase -= rate
+                            if (pcmLen < pcmMax) {
+                                if (pcmLen == pcm.size) pcm = pcm.copyOf((pcm.size * 2).coerceAtMost(pcmMax))
+                                pcm[pcmLen++] = (pcmAcc / pcmCnt * 32767f).toInt().coerceIn(-32768, 32767).toShort()
+                            }
+                            pcmAcc = 0f; pcmCnt = 0
+                        }
                         lp = lp * lpCoeff + m * (1 - lpCoeff)
                         val a = abs(m)
                         if (a > framePeak) framePeak = a
@@ -115,7 +141,8 @@ object WaveformAnalyzer {
             val wf = Waveform(
                 FloatArray(peaks.size) { peaks[it] / maxPeak },
                 bass.toFloatArray(),
-                BeatDetector.analyze(onset.toFloatArray(), Waveform.FPS)
+                BeatDetector.analyze(onset.toFloatArray(), Waveform.FPS),
+                if (pcmLen > Waveform.PCM_RATE) pcm.copyOf(pcmLen) else null
             )
             synchronized(cache) { cache[uri.toString()] = wf }
             wf

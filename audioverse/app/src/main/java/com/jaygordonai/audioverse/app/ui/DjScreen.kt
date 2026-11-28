@@ -7,6 +7,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -270,7 +272,8 @@ private fun DeckPanel(deck: DeckUi, id: DeckId, clearCues: Boolean, vm: DjViewMo
             val mirror = id == DeckId.B
             if (!mirror) Transport(deck, id, vm, color)
             Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                JogWheel(deck, color, onJog = { vm.jog(id, it) }, onRelease = { vm.jogRelease(id) })
+                JogWheel(deck, color, onTouch = { vm.jogTouch(id) }, onJog = { vm.jog(id, it) }, onRelease = { vm.jogRelease(id) })
+                Box(Modifier.align(Alignment.TopEnd)) { Pill("VINYL", color, active = deck.vinyl, onClick = { vm.toggleVinyl(id) }) }
             }
             VFader(
                 value = ((deck.tempo - 1f) / DjMath.TEMPO_RANGE).coerceIn(-1f, 1f) * -0.5f + 0.5f,
@@ -361,9 +364,14 @@ private fun Overview(deck: DeckUi, color: Color, onSeek: (Float) -> Unit) {
     }
 }
 
-/** Platter: rotates at 33⅓ rpm with the track; drag around the centre to scrub (paused) or bend (playing). */
+/**
+ * Platter: rotates at 33⅓ rpm with the track. VINYL on: touch grabs the record — move clockwise
+ * to push forward, anticlockwise to pull back / rewind, hold still to stop it. VINYL off: drag
+ * to scrub (paused) or bend (playing).
+ */
 @Composable
-private fun JogWheel(deck: DeckUi, color: Color, onJog: (Float) -> Unit, onRelease: () -> Unit) {
+private fun JogWheel(deck: DeckUi, color: Color, onTouch: () -> Unit, onJog: (Float) -> Unit, onRelease: () -> Unit) {
+    val touch by rememberUpdatedState(onTouch)
     val jog by rememberUpdatedState(onJog)
     val release by rememberUpdatedState(onRelease)
     var held by remember { mutableStateOf(false) }
@@ -371,19 +379,30 @@ private fun JogWheel(deck: DeckUi, color: Color, onJog: (Float) -> Unit, onRelea
         Modifier.fillMaxHeight().aspectRatio(1f)
             .semantics { contentDescription = "Jog wheel" }
             .pointerInput(Unit) {
-                var last = 0f
-                detectDragGestures(
-                    onDragStart = { p -> held = true; last = atan2(p.y - size.height / 2f, p.x - size.width / 2f) },
-                    onDragEnd = { held = false; release() },
-                    onDragCancel = { held = false; release() }
-                ) { change, _ ->
-                    val p = change.position
-                    val a = atan2(p.y - size.height / 2f, p.x - size.width / 2f)
-                    var delta = Math.toDegrees((a - last).toDouble()).toFloat()
-                    if (delta > 180) delta -= 360f
-                    if (delta < -180) delta += 360f
-                    last = a
-                    if (abs(delta) > 0.2f) jog(delta)
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
+                    fun angle(p: Offset) = atan2(p.y - size.height / 2f, p.x - size.width / 2f)
+                    var last = angle(down.position)
+                    held = true
+                    touch() // the record stops under the finger at once
+                    try {
+                        while (true) {
+                            val ev = awaitPointerEvent()
+                            val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!ch.pressed) break
+                            val a = angle(ch.position)
+                            var delta = Math.toDegrees((a - last).toDouble()).toFloat()
+                            if (delta > 180) delta -= 360f
+                            if (delta < -180) delta += 360f
+                            last = a
+                            if (abs(delta) > 0.05f) jog(delta)
+                            ch.consume()
+                        }
+                    } finally {
+                        held = false
+                        release()
+                    }
                 }
             }
     ) {
@@ -393,7 +412,8 @@ private fun JogWheel(deck: DeckUi, color: Color, onJog: (Float) -> Unit, onRelea
         drawCircle(if (held) color else color.copy(alpha = 0.55f), r - 2, c, style = Stroke(width = 4f))
         for (k in 1..3) drawCircle(Color.White.copy(alpha = 0.05f), r * (0.45f + k * 0.15f), c, style = Stroke(width = 1f))
         drawCircle(AV.SurfaceHigh, r * 0.32f, c)
-        val angle = (deck.positionMs % 1800L) / 1800f * 360f
+        if (deck.scratching) drawCircle(color.copy(alpha = 0.12f), r - 4, c)
+        val angle = (deck.positionMs.mod(1800L)) / 1800f * 360f
         rotate(angle, c) {
             drawLine(Color.White, Offset(c.x, c.y - r * 0.92f), Offset(c.x, c.y - r * 0.55f), strokeWidth = 5f)
         }
