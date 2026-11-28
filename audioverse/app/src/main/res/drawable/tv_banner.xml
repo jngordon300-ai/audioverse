@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV / Google TV (Onn) home-screen banner, 16:9. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp" android:height="180dp"
+    android:viewportWidth="320" android:viewportHeight="180">
+    <path android:fillColor="#0E0F12" android:pathData="M0,0h320v180h-320z" />
+    <path android:fillColor="#F5A524" android:pathData="M40,60h44v12h-16v52h-12v-52h-16z" />
+    <path android:strokeColor="#F5A524" android:strokeWidth="5" android:fillColor="#00000000"
+        android:pathData="M100,70a22,22 0,0 1,0 44" />
+    <path android:strokeColor="#FFB347" android:strokeWidth="5" android:fillColor="#00000000"
+        android:pathData="M110,58a38,38 0,0 1,0 68" />
+    <path android:fillColor="#F2F2F0"
+        android:pathData="M150,72h10l14,40l14,-40h10l-19,52h-10z" />
+    <path android:fillColor="#F2F2F0"
+        android:pathData="M205,72h10v52h-10z" />
+    <path android:fillColor="#A3A7B0"
+        android:pathData="M226,112h70v4h-70z" />
+</vector>
